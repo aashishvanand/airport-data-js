@@ -1,0 +1,12 @@
+# Node modules
+node_modules/
+
+# Logs
+npm-debug.log*
+
+# OS generated files
+.DS_Store
+
+# IDE generated files (if you're using an IDE that generates specific directories/files)
+.idea/
+.vscode/
