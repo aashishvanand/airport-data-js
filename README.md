@@ -11,6 +11,8 @@ A comprehensive library providing easy retrieval of airport data based on IATA, 
 - Retrieve data based on continents.
 - Built-in error handling for invalid input formats.
 - Efficiently packaged with minimized and gzipped data.
+- **Comprehensive Data Access**: Retrieve airport data using IATA code, ICAO code, city codes, country codes, and continents.
+- **Unique Link Integration**: The first library to provide direct links to [FlightRadar24](https://www.flightradar24.com/), [Radarbox](https://www.radarbox.com/), and [FlightAware](https://www.flightaware.com/) for each airport, giving users immediate access to live flight tracking and airport data.
 
 ## Installation
 
@@ -47,6 +49,69 @@ console.log(airportByCountryCode);
 const airportByContinent = airportData.getAirportByContinent("AS");
 console.log(airportByContinent);
 ```
+
+## Example Data Fields
+
+For Chennai International Airport:
+
+| Field Name           | Data                                                     |
+|----------------------|----------------------------------------------------------|
+| IATA                 | MAA                                                      |
+| ICAO                 | VOMM                                                     |
+| Time Zone            | Asia/Kolkata                                             |
+| City Code            | MAA                                                      |
+| Country Code         | IN                                                       |
+| Name                 | Chennai International Airport                            |
+| Latitude             | 12.99                                                    |
+| Longitude            | 80.1693                                                  |
+| Altitude (in feet)   | 52                                                       |
+| State                | Tamil Nadu                                               |
+| City                 | Pallavaram                                               |
+| County               | Kancheepuram                                             |
+| State Code           | Tamil Nadu                                               |
+| Airport Type         | large_airport                                            |
+| Continent            | AS                                                       |
+| State Abbreviation   | IN-TN                                                    |
+| International        | TRUE                                                     |
+| Wikipedia Link       | [Wikipedia](https://en.wikipedia.org/wiki/Chennai_International_Airport)|
+| Official Website     | [Chennai Airport](http://chennaiairport.com)            |
+| Location ID          | 12513629                                                 |
+| Phone Number         | 044-2340551                                              |
+| Runway Length (in meters) | 10050                                               |
+| Flightradar24        | [Flightradar24](https://www.flightradar24.com/airport/MAA)|
+| Radarbox             | [Radarbox](https://www.radarbox.com/airport/VOMM)       |
+| Flightaware Link     | [Flightaware](https://www.flightaware.com/live/airport/VOMM)|
+
+### Singapore Changi Airport:
+
+| Field Name           | Data                                                     |
+|----------------------|----------------------------------------------------------|
+| IATA                 | SIN                                                      |
+| ICAO                 | WSSS                                                     |
+| Time Zone            | Asia/Singapore                                           |
+| City Code            | SIN                                                      |
+| Country Code         | SG                                                       |
+| Name                 | Singapore Changi Airport                                 |
+| Latitude             | 1.35019                                                  |
+| Longitude            | 103.994                                                  |
+| Altitude (in feet)   | 22                                                       |
+| State                | Singapore                                                |
+| City                 | Singapore                                                |
+| County               | Singapore                                                |
+| State Code           | South East                                               |
+| Airport Type         | large_airport                                            |
+| Continent            | AS                                                       |
+| State Abbreviation   | SG-04                                                    |
+| International        | TRUE                                                     |
+| Wikipedia Link       | [Wikipedia](https://en.wikipedia.org/wiki/Singapore_Changi_Airport)|
+| Official Website     | [Changi Airport](http://www.changiairport.com/)         |
+| Location ID          | 12517525                                                 |
+| Phone Number         | (65) 6542 1122                                           |
+| Runway Length (in meters) | 13200                                               |
+| Flightradar24         | [Flightradar24](https://www.flightradar24.com/airport/SIN)|
+| Radarbox              | [Radarbox](https://www.radarbox.com/airport/WSSS)       |
+| Flightaware           | [Flightaware](https://www.flightaware.com/live/airport/WSSS)|
+
 
 ## Running the Project Locally
 
