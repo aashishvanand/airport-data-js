@@ -1,5 +1,8 @@
 # Source files (since you're providing bundled code in dist/)
 src/
+# .npmignore
+data/airports.json
+
 
 # Test files
 tests/
@@ -10,6 +13,5 @@ webpack.config.js
 # Other files/directories
 .DS_Store
 npm-debug.log
-
-# You might want to include the data in the npm package, but if you don't:
-# data/
+README.md
+LICENSE

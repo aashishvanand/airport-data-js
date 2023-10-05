@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
   target: 'node', // Target node environment
-  entry: './index.js', // Your library entry point
+  entry: './src/index.js', // Your library entry point
   output: {
     path: path.resolve(__dirname, 'dist'), // Output directory
     filename: 'index.js', // Output file name

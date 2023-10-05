@@ -1,6 +1,6 @@
 {
   "name": "airports-nodejs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.",
   "main": "dist/index.js",
   "scripts": {
@@ -19,12 +19,15 @@
     "library",
     "aviation",
     "travel",
+    "database",
     "geography",
     "lookup",
     "codes",
     "continent",
     "city",
-    "country"
+    "country",
+    "airports",
+    "timezones"
   ],
   "author": "Aashish Vivekanand",
   "license": "CC BY 4.0",
