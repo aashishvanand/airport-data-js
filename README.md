@@ -1,6 +1,6 @@
-# airport-library
+# airports-nodejs
 
-A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. It is ideal for developers building applications related to aviation, travel, and geography.
+A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.
 
 ## Features
 
@@ -9,13 +9,15 @@ A comprehensive library providing easy retrieval of airport data based on IATA, 
 - Fetch data using city codes.
 - Fetch data using country codes.
 - Retrieve data based on continents.
+- Built-in error handling for invalid input formats.
+- Efficiently packaged with minimized and gzipped data.
 
 ## Installation
 
-You can install `airport-library` using npm:
+You can install `airports-nodejs` using npm:
 
 ```bash
-npm install airport-library
+npm install airports-nodejs
 ```
 
 ## Usage
@@ -23,7 +25,7 @@ npm install airport-library
 Here's how you can use the library:
 
 ```javascript
-const airportData = require('airport-library');
+const airportData = require('airports-nodejs');
 
 // Retrieve airport data using IATA code
 const airportByIATA = airportData.getAirportByIata("AAA");
@@ -44,9 +46,6 @@ console.log(airportByCountryCode);
 // Retrieve data based on continents
 const airportByContinent = airportData.getAirportByContinent("AS");
 console.log(airportByContinent);
-
-
-// ... and so on for other methods
 ```
 
 ## Running the Project Locally
@@ -69,7 +68,13 @@ cd airports-nodejs
 npm install
 ```
 
-4. To run tests:
+4. To bundle the source code using Webpack:
+
+```bash
+npm run build
+```
+
+5. To run tests:
 
 ```bash
 npm test
@@ -81,4 +86,4 @@ This project is licensed under the Creative Commons Attribution 4.0 Internationa
 
 ## Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check [issues page](https://github.com/aashishvanand/airports-nodejs/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/aashishvanand/airports-nodejs/issues).

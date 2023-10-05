@@ -1,37 +1,40 @@
 {
-    "name": "airports-library",
-    "version": "1.0.0",
-    "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.",
-    "main": "index.js",
-    "scripts": {
-      "test": "jest"
-    },
-    "repository": {
-      "type": "git",
-      "url": "https://github.com/aashishvanand/airports-nodejs.git"
-    },
-    "keywords": [
-      "airport",
-      "iata",
-      "icao",
-      "data",
-      "library",
-      "aviation",
-      "travel",
-      "geography",
-      "lookup",
-      "codes",
-      "continent",
-      "city",
-      "country"
-    ],
-    "author": "Aashish Vivekanand",
-    "license": "CC BY 4.0",
-    "bugs": {
-      "url": "https://github.com/aashishvanand/airports-nodejs/issues"
-    },
-    "homepage": "https://github.com/aashishvanand/airports-nodejs",
-    "devDependencies": {
-      "jest": "^27.2.5"
-    }
+  "name": "airports-nodejs",
+  "version": "1.0.0",
+  "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aashishvanand/airports-nodejs.git"
+  },
+  "keywords": [
+    "airport",
+    "iata",
+    "icao",
+    "data",
+    "library",
+    "aviation",
+    "travel",
+    "geography",
+    "lookup",
+    "codes",
+    "continent",
+    "city",
+    "country"
+  ],
+  "author": "Aashish Vivekanand",
+  "license": "CC BY 4.0",
+  "bugs": {
+    "url": "https://github.com/aashishvanand/airports-nodejs/issues"
+  },
+  "homepage": "https://github.com/aashishvanand/airports-nodejs",
+  "devDependencies": {
+    "jest": "^27.2.5",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
   }
+}
