@@ -1,30 +1,19 @@
----
+Airports-library
+A comprehensive library provides easy airport data retrieval based on IATA, ICAO, city codes, country codes, and continents. It is ideal for developers building aviation, travel, and geography applications.
 
-# airport-library
+Features
+Retrieve airport data using IATA code.
+Retrieve airport data using ICAO code.
+Fetch data using city codes.
+Fetch data using country codes.
+Retrieve data based on continents.
+Installation
+You can install airport-library using npm:
 
-A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. It is ideal for developers building applications related to aviation, travel, and geography.
-
-## Features
-
-- Retrieve airport data using IATA code.
-- Retrieve airport data using ICAO code.
-- Fetch data using city codes.
-- Fetch data using country codes.
-- Retrieve data based on continents.
-
-## Installation
-
-You can install `airport-library` using npm:
-
-```bash
 npm install airport-library
-```
+Usage
+Here’s how you can use the library:
 
-## Usage
-
-Here's how you can use the library:
-
-```javascript
 const airportData = require('airport-library');
 
 // Retrieve airport data using IATA code
@@ -49,40 +38,17 @@ console.log(airportByContinent);
 
 
 // ... and so on for other methods
-```
-
-## Running the Project Locally
-
-1. Clone the repository:
-
-```bash
+Running the Project Locally
+Clone the repository:
 git clone https://github.com/aashishvanand/airports-nodejs.git
-```
-
-2. Change into the cloned directory:
-
-```bash
+Change into the cloned directory:
 cd airports-nodejs
-```
-
-3. Install the necessary dependencies:
-
-```bash
+Install the necessary dependencies:
 npm install
-```
-
-4. To run tests:
-
-```bash
+To run tests:
 npm test
-```
+License
+This project is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) - see the LICENSE file for details.
 
-## License
-
-This project is licensed under the Creative Commons Attribution 4.0 International (CC BY 4.0) - see the [LICENSE](LICENSE) file for details.
-
-## Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check [issues page](https://github.com/aashishvanand/airports-nodejs/issues).
-
----
+Contributing
+Contributions, issues, and feature requests are welcome! Feel free to check issues page.
