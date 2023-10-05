@@ -1,4 +1,6 @@
-# airports-library
+---
+
+# airport-library
 
 A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. It is ideal for developers building applications related to aviation, travel, and geography.
 
@@ -82,3 +84,5 @@ This project is licensed under the Creative Commons Attribution 4.0 Internationa
 ## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check [issues page](https://github.com/aashishvanand/airports-nodejs/issues).
+
+---
