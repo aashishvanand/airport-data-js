@@ -1,34 +1,29 @@
-const airportData = require('../dist/index');
+const { getAirportByIata, getAirportByIcao, getAirportByCityCode, getAirportByCountryCode } = require('../src/index.js');
 
-describe('airportData library', () => {
-    
-    it('should retrieve airport data by IATA code', () => {
-        const result = airportData.getAirportByIata("AAA");
-        expect(result).toBeTruthy();
-        expect(result[0].iata).toBe("AAA");
+    describe('airportData library', () => {
+        test('should retrieve airport data by IATA code', async () => {
+            const data = await getAirportByIata('AAA');
+            expect(data[0].iata).toEqual('AAA');
     });
-
-    it('should retrieve airport data by ICAO code', () => {
-        const result = airportData.getAirportByIcao("NTGA");
-        expect(result).toBeTruthy();
-        expect(result[0].icao).toBe("NTGA");
-    });
-
-    it('should retrieve airport data by city code', () => {
-        const result = airportData.getAirportByCityCode("AAA");
-        expect(result).toBeTruthy();
-        expect(result[0].city_code).toBe("AAA");
-    });
-
-    it('should retrieve airport data by country code', () => {
-        const result = airportData.getAirportByCountryCode("PF");
-        expect(result).toBeTruthy();
-        expect(result[0].country_code).toBe("PF");
-    });
-
-    it('should throw error for invalid IATA format', () => {
-        expect(() => airportData.getAirportByIata("AA")).toThrow("Invalid IATA format. Please provide a 3-letter uppercase code, e.g., 'AAA'.");
-    });
-
-});
-
+  
+      test('should retrieve airport data by ICAO code', async () => {
+          const data = await getAirportByIcao('NTGA');
+          expect(data[0].icao).toEqual('NTGA');
+      });
+  
+      test('should retrieve airport data by city code', async () => {
+          const data = await getAirportByCityCode('AAA');
+          expect(data[0].city_code).toEqual('AAA');
+      });
+  
+      test('should retrieve airport data by country code', async () => {
+          const data = await getAirportByCountryCode('IN');
+          expect(data[0].country_code).toEqual('IN');
+      });
+  
+      test('should throw error for invalid IATA format', async () => {
+          await expect(getAirportByIata('AAAA')).rejects.toThrow("Invalid IATA format. Please provide a 3-letter uppercase code, e.g., 'AAA'.");
+      });
+  });
+  
+  

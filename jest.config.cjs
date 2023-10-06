@@ -1,10 +1,7 @@
 module.exports = {
-    testEnvironment: 'node',
-    transform: {
-      '^.+\\.js?$': 'babel-jest',
-    },
-    moduleFileExtensions: ['js'],
-    testMatch: ['**/?(*.)+(spec|test).js'],
-    testPathIgnorePatterns: ['/node_modules/'],
-  };
-  
+  testEnvironment: 'node',
+  transform: {},
+  moduleNameMapper: {
+      '\\.bin$': '<rootDir>/__mocks__/fileMock.js'
+  }
+};

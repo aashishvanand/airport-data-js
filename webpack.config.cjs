@@ -1,32 +1,33 @@
 const path = require('path');
 
 module.exports = {
+  mode: 'production',
   entry: './src/index.js',
   output: {
+    filename: 'airports.bundle.js',
     path: path.resolve(__dirname, 'dist'),
-    filename: 'index.js',
-    library: 'airportData',
-    libraryTarget: 'umd',
-    globalObject: 'this'   // Ensure compatibility with both Node and Browser
+    library: 'airports',
+    libraryTarget: 'umd'
   },
   module: {
     rules: [
       {
-        test: /\.js$/,
-        exclude: /node_modules/,
+        test: /\.bin$/,
         use: {
-          loader: 'babel-loader',
-          options: {
-            presets: ['@babel/preset-env']
-          }
+          loader: 'arraybuffer-loader',
         }
-      },
-      {
-        test: /\.gz$/,
-        use: 'file-loader',
-        type: 'javascript/auto'  // This is essential to handle the binary format
-    }
+      }
     ]
   },
-  mode: 'production'
+  resolve: {
+    extensions: ['.js'],
+    // Add the following lines:
+    fallback: {
+      "path": require.resolve("path-browserify"),
+      "fs": false // this tells Webpack to provide an empty module when fs is imported
+    }
+  },
+  externals: {
+    pako: 'pako'
+  }
 };
