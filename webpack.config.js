@@ -1,23 +1,27 @@
 const path = require('path');
 
 module.exports = {
-  target: 'node', // Target node environment
-  entry: './src/index.js', // Your library entry point
+  entry: './src/index.js',
   output: {
-    path: path.resolve(__dirname, 'dist'), // Output directory
-    filename: 'index.js', // Output file name
-    libraryTarget: 'commonjs2' // This is important to make the library usable in Node.js
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'index.js',
+    library: 'airportData',
+    libraryTarget: 'umd',
+    globalObject: 'this'   // Ensure compatibility with both Node and Browser
   },
-  mode: 'production', // Use 'development' for better debug info
   module: {
     rules: [
-      // Add loaders for transpiling (like Babel) or handling other file types if needed
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env']
+          }
+        }
+      }
     ]
   },
-  externals: {
-    // This will exclude node_modules from being bundled, it'll use the installed versions
-    // Add any other external libraries if needed
-    'fs': 'commonjs fs',
-    'zlib': 'commonjs zlib'
-  }
+  mode: 'production'
 };

@@ -1,19 +1,10 @@
-const fs = require('fs');
-const zlib = require('zlib');
+import pako from 'pako';
+import airportsGzipped from './airports.json.gz';
 
-let airportsData = [];
+const airportsData = JSON.parse(pako.inflate(airportsGzipped, { to: 'string' }));
 
-// Load compressed JSON data into memory
-function loadJSONData() {
-    if (airportsData.length) return;
-
-    const compressedData = fs.readFileSync('./src/airports.gz');
-    const rawData = zlib.gunzipSync(compressedData).toString();
-    airportsData = JSON.parse(rawData);
-}
-
-function validateRegex(value, pattern, errorMessage) {
-    if (!value.match(pattern)) {
+function validateRegex(value, regex, errorMessage) {
+    if (!regex.test(value)) {
         throw new Error(errorMessage);
     }
 }
@@ -62,10 +53,6 @@ function getAirportByContinent(continentCode) {
     }
     return results;
 }
-
-
-// Initially load compressed JSON data
-loadJSONData();
 
 module.exports = {
     getAirportByIata,
