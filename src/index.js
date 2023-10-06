@@ -1,5 +1,5 @@
 import pako from 'pako';
-import airportsGzipped from './airports.json.gz';
+import airportsGzipped from './airports.gz';
 
 const airportsData = JSON.parse(pako.inflate(airportsGzipped, { to: 'string' }));
 

@@ -10,3 +10,6 @@ npm-debug.log*
 # IDE generated files (if you're using an IDE that generates specific directories/files)
 .idea/
 .vscode/
+
+# Production-ready build
+dist/

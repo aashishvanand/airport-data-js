@@ -20,7 +20,12 @@ module.exports = {
             presets: ['@babel/preset-env']
           }
         }
-      }
+      },
+      {
+        test: /\.gz$/,
+        use: 'file-loader',
+        type: 'javascript/auto'  // This is essential to handle the binary format
+    }
     ]
   },
   mode: 'production'
