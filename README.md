@@ -22,6 +22,11 @@ You can install `airports-nodejs` using npm:
 npm install airports-nodejs
 ```
 
+For detailed instructions on how to use this library in different environments, please refer to the following links:
+
+- [Node.js Instructions](./INSTRUCTIONS_NODE.md)
+- [React Instructions](./INSTRUCTIONS_REACT.md) *(Coming Soon)*
+
 ## Usage
 
 Here's how you can use the library:
@@ -144,6 +149,16 @@ npm run build
 ```bash
 npm test
 ```
+
+## Troubleshooting
+
+1. **Issue**: "Module not found: Error: Can't resolve 'babel-loader'".
+   **Solution**: Ensure that you have installed all the necessary dependencies. If the issue persists, reinstall the library.
+
+2. **Issue**: "Error: Automatic publicPath is not supported in this browser".
+   **Solution**: Ensure that you're using the library in a supported environment (Node.js or a modern browser).
+
+If you encounter other issues, consider raising an issue on the [GitHub repository](https://github.com/your-repo-link).
 
 ## License
 

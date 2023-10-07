@@ -1,4 +1,3 @@
-const pako = require('pako');
 let airportsData = [];
 
 function isNodeEnvironment() {
@@ -6,39 +5,40 @@ function isNodeEnvironment() {
 }
 
 async function loadData() {
-  if (isNodeEnvironment()) {
-    // Node.js context
-    const fs = require('fs');
-    const path = require('path');
+    if (isNodeEnvironment()) {
+        // Node.js context
+        const fs = require('fs');
+        const path = require('path');
+        const pako = require('pako');
 
-    const chunkCount = 17;  // Adjust if you have more or fewer chunks
+        const chunkCount = 17;
 
-    for (let i = 0; i < chunkCount; i++) {
-        const chunkBuffer = fs.readFileSync(path.join(__dirname, `airports_chunk_${i}.bin`));
-        const chunkData = new Uint8Array(chunkBuffer);
-        const chunkJson = JSON.parse(pako.inflate(chunkData, { to: 'string' }));
-        airportsData = airportsData.concat(chunkJson);
-    }
-  } else {
-    // Browser context, use dynamic imports
-    const chunks = [];
-    for (let i = 0; i <= 6; i++) {
-        chunks.push(import(`./airports_chunk_${i}.bin`));
-    }
-    Promise.all(chunks).then(data => {
-        data.forEach(chunk => {
-            airportsData = airportsData.concat(JSON.parse(pako.inflate(chunk.default, { to: 'string' })));
+        for (let i = 0; i < chunkCount; i++) {
+            const chunkBuffer = fs.readFileSync(path.join(__dirname, `airports_chunk_${i}.bin`));
+            const chunkData = new Uint8Array(chunkBuffer);
+            const chunkJson = JSON.parse(pako.inflate(chunkData, { to: 'string' }));
+            airportsData = airportsData.concat(chunkJson);
+        }
+    } else {
+        // Browser context, use dynamic imports
+        const chunks = [];
+        for (let i = 0; i <= 6; i++) {
+            chunks.push(import(`./airports_chunk_${i}.bin`));
+        }
+        Promise.all(chunks).then(data => {
+            data.forEach(chunk => {
+                airportsData = airportsData.concat(JSON.parse(pako.inflate(chunk.default, { to: 'string' }))); // Assuming pako is globally available in the browser
+            });
         });
-    });
-  }
+    }
 }
 
 loadData();
 
 function validateRegex(data, regex, errorMessage) {
-  if (!regex.test(data)) {
-    throw new Error(errorMessage);
-  }
+    if (!regex.test(data)) {
+        throw new Error(errorMessage);
+    }
 }
 
 async function getAirportByIata(iataCode = '') {

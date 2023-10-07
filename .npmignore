@@ -1,8 +1,5 @@
 # Source files (since you're providing bundled code in dist/)
 src/
-# .npmignore
-data/airports.json
-
 
 # Test files
 tests/
@@ -15,3 +12,13 @@ webpack.config.js
 npm-debug.log
 README.md
 LICENSE
+
+node_modules/
+.git/
+.github/
+dist/
+scripts/
+.babelrc
+jest.config.cjs
+package.json
+webpack.config.cjs

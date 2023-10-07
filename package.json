@@ -1,6 +1,6 @@
 {
   "name": "airports-nodejs",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "type": "commonjs",
   "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents.",
   "main": "dist/airports.bundle.js",
@@ -40,7 +40,11 @@
   },
   "homepage": "https://github.com/aashishvanand/airports-nodejs",
   "devDependencies": {
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.22.20",
     "arraybuffer-loader": "^1.0.8",
+    "babel-loader": "^9.1.3",
+    "copy-webpack-plugin": "^11.0.0",
     "jest": "^27.5.1",
     "path-browserify": "^1.0.1",
     "webpack": "^5.88.2",
