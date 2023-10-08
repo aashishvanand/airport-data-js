@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
@@ -45,6 +46,7 @@ module.exports = {
         { from: './src/*.bin', to: '[name][ext]' }
       ],
     }),
+    new webpack.IgnorePlugin({ resourceRegExp: /^(fs|path)$/ }) // Added this line
   ],
   resolve: {
     extensions: ['.js'],
