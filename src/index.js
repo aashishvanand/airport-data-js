@@ -1,39 +1,7 @@
-let airportsData = [];
+import jsonpack from 'jsonpack';
+import compressedData from './airports.compressed';
 
-function isNodeEnvironment() {
-    return typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
-}
-
-async function loadData() {
-    if (isNodeEnvironment()) {
-        // Node.js context
-        const fs = require('fs');
-        const path = require('path');
-        const pako = require('pako');
-
-        const chunkCount = 17;
-
-        for (let i = 0; i < chunkCount; i++) {
-            const chunkBuffer = fs.readFileSync(path.join(__dirname, `airports_chunk_${i}.bin`));
-            const chunkData = new Uint8Array(chunkBuffer);
-            const chunkJson = JSON.parse(pako.inflate(chunkData, { to: 'string' }));
-            airportsData = airportsData.concat(chunkJson);
-        }
-    } else {
-        // Browser context, use dynamic imports
-        const chunks = [];
-        for (let i = 0; i <= 6; i++) {
-            chunks.push(import(`./airports_chunk_${i}.bin`));
-        }
-        Promise.all(chunks).then(data => {
-            data.forEach(chunk => {
-                airportsData = airportsData.concat(JSON.parse(pako.inflate(chunk.default, { to: 'string' }))); // Assuming pako is globally available in the browser
-            });
-        });
-    }
-}
-
-loadData();
+const airportsData = jsonpack.unpack(compressedData);
 
 function validateRegex(data, regex, errorMessage) {
     if (!regex.test(data)) {
