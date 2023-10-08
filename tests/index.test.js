@@ -1,4 +1,4 @@
-const { getAirportByIata, getAirportByIcao, getAirportByCityCode, getAirportByCountryCode } = require('../src/index.js');
+const { getAirportByIata, getAirportByIcao, getAirportByCityCode, getAirportByCountryCode } = require('../dist/airport-data.min.js');
 
     describe('airportData library', () => {
         test('should retrieve airport data by IATA code', async () => {
