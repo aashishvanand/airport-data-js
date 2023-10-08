@@ -1,53 +1,16 @@
 {
-  "name": "airport-data-js",
+  "name": "nodejs-airports-sample",
   "version": "1.0.0",
-  "type": "commonjs",
-  "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents.",
-  "main": "dist/airports.bundle.js",
+  "description": "",
+  "main": "index.js",
   "scripts": {
-    "test": "jest --config jest.config.cjs",
-    "build": "webpack --config webpack.config.cjs"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "pako": "^2.1.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/aashishvanand/airport-data-js.git"
-  },
-  "keywords": [
-    "airport",
-    "iata",
-    "icao",
-    "data",
-    "library",
-    "aviation",
-    "travel",
-    "database",
-    "geography",
-    "lookup",
-    "codes",
-    "continent",
-    "city",
-    "country",
-    "airports",
-    "timezones"
-  ],
-  "author": "Aashish Vivekanand",
-  "license": "CC BY 4.0",
-  "bugs": {
-    "url": "https://github.com/aashishvanand/airport-data-js/issues"
-  },
-  "homepage": "https://github.com/aashishvanand/airport-data-js",
-  "devDependencies": {
-    "@babel/core": "^7.23.0",
-    "@babel/preset-env": "^7.22.20",
-    "arraybuffer-loader": "^1.0.8",
-    "babel-loader": "^9.1.3",
-    "copy-webpack-plugin": "^11.0.0",
-    "jest": "^27.5.1",
-    "path-browserify": "^1.0.1",
-    "webpack": "^5.88.2",
-    "webpack-cli": "^5.1.4"
+    "airport-data-js": "^1.0.0",
+    "axios": "^1.5.1"
   }
 }

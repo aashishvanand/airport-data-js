@@ -1,15 +1,9 @@
-# Node modules
+# Node specific
 node_modules/
+npm-debug.log
+package-lock.json
 
-# Logs
-npm-debug.log*
-
-# OS generated files
-.DS_Store
-
-# IDE generated files (if you're using an IDE that generates specific directories/files)
+# IDE specific
 .idea/
+*.code-workspace
 .vscode/
-
-# Production-ready build
-dist/
