@@ -13,3 +13,4 @@ npm-debug.log*
 
 # Production-ready build
 dist/
+lib/
