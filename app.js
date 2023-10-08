@@ -12,4 +12,3 @@ async function fetchAirportData(iataCode) {
 }
 
 fetchAirportData('MAA');
-fetchSomeExternalData();
