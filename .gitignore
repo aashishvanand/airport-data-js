@@ -3,6 +3,8 @@ node_modules/
 
 # Logs
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS generated files
 .DS_Store
@@ -10,6 +12,12 @@ npm-debug.log*
 # IDE generated files (if you're using an IDE that generates specific directories/files)
 .idea/
 .vscode/
+*.iml
+*.swp
+*.swo
+*.log
 
 # Production-ready build
 dist/
+lib/
+*.bin
