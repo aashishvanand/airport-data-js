@@ -1,6 +1,6 @@
 # Airports - Node.js Usage Instructions
 
-This document provides step-by-step instructions on how to use the `airports-js` library in a Node.js environment.
+This document provides step-by-step instructions on how to use the `airport-data-js` library in a Node.js environment.
 
 ## Table of Contents
 
@@ -18,10 +18,10 @@ This document provides step-by-step instructions on how to use the `airports-js`
     npm init -y
     ```
 
-2. **Install the `airports-js` library:**
+2. **Install the `airport-data-js` library:**
 
     ```bash
-    npm install airports-js
+    npm install airport-data-js
     ```
 
 ## Integrating the Library
@@ -29,7 +29,7 @@ This document provides step-by-step instructions on how to use the `airports-js`
 1. **Import the library in your Node.js script:**
 
     ```javascript
-    const airports = require('airports-js');
+    const airports = require('airport-data-js');
     ```
 
 ## Fetching Data

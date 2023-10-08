@@ -1,4 +1,4 @@
-# airports-js
+# airport-data-js
 
 A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.
 
@@ -16,10 +16,10 @@ A comprehensive library providing easy retrieval of airport data based on IATA, 
 
 ## Installation
 
-You can install `airports-js` using npm:
+You can install `airport-data-js` using npm:
 
 ```bash
-npm install airports-js
+npm install airport-data-js
 ```
 
 For detailed instructions on how to use this library in different environments, please refer to the following links:
@@ -32,7 +32,7 @@ For detailed instructions on how to use this library in different environments, 
 Here's how you can use the library:
 
 ```javascript
-const airportData = require('airports-js');
+const airportData = require('airport-data-js');
 
 // Retrieve airport data using IATA code
 const airportByIATA = airportData.getAirportByIata("AAA");
@@ -123,13 +123,13 @@ For Chennai International Airport:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/aashishvanand/airports-js.git
+git clone https://github.com/aashishvanand/airport-data-js.git
 ```
 
 2. Change into the cloned directory:
 
 ```bash
-cd airports-js
+cd airport-data-js
 ```
 
 3. Install the necessary dependencies:
@@ -166,4 +166,4 @@ This project is licensed under the Creative Commons Attribution 4.0 Internationa
 
 ## Contributing
 
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/aashishvanand/airports-js/issues).
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/aashishvanand/airport-data-js/issues).
