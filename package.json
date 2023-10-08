@@ -1,5 +1,5 @@
 {
-  "name": "airports-nodejs",
+  "name": "airports-js",
   "version": "1.0.7",
   "type": "commonjs",
   "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents.",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/aashishvanand/airports-nodejs.git"
+    "url": "https://github.com/aashishvanand/airports-js.git"
   },
   "keywords": [
     "airport",
@@ -36,9 +36,9 @@
   "author": "Aashish Vivekanand",
   "license": "CC BY 4.0",
   "bugs": {
-    "url": "https://github.com/aashishvanand/airports-nodejs/issues"
+    "url": "https://github.com/aashishvanand/airports-js/issues"
   },
-  "homepage": "https://github.com/aashishvanand/airports-nodejs",
+  "homepage": "https://github.com/aashishvanand/airports-js",
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.22.20",
