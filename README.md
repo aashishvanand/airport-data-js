@@ -24,7 +24,7 @@ npm install airport-data-js
 
 For detailed instructions on how to use this library in different environments, please refer to the following links:
 
-- [Node.js Instructions](./INSTRUCTIONS_NODE.md)
+- [Node.js Instructions](https://github.com/aashishvanand/airport-data-js/blob/nodejs-sample/README.md)
 - [React Instructions](./INSTRUCTIONS_REACT.md) *(Coming Soon)*
 
 ## Usage
@@ -158,7 +158,7 @@ npm test
 2. **Issue**: "Error: Automatic publicPath is not supported in this browser".
    **Solution**: Ensure that you're using the library in a supported environment (Node.js or a modern browser).
 
-If you encounter other issues, consider raising an issue on the [GitHub repository](https://github.com/your-repo-link).
+If you encounter other issues, consider raising an issue on the [GitHub repository](https://github.com/aashishvanand/airport-data-js/issues).
 
 ## License
 
