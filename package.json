@@ -40,7 +40,7 @@
   "bugs": {
     "url": "https://github.com/aashishvanand/airport-data-js/issues"
   },
-  "homepage": "http://aashishvanand.me/airport-data-js/",
+  "homepage": "https://aashishvanand.me/airport-data-js/",
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/plugin-transform-modules-commonjs": "^7.23.0",
