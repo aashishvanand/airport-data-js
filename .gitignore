@@ -7,3 +7,6 @@ package-lock.json
 .idea/
 *.code-workspace
 .vscode/
+
+# OS generated files
+.DS_Store
