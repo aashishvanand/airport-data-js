@@ -25,7 +25,7 @@ npm install airport-data-js
 For detailed instructions on how to use this library in different environments, please refer to the following links:
 
 - [Node.js Instructions](https://github.com/aashishvanand/airport-data-js/blob/nodejs-sample/README.md)
-- [React Instructions](./INSTRUCTIONS_REACT.md) *(Coming Soon)*
+- [React Instructions](https://github.com/aashishvanand/airport-data-js/blob/reactjs-sample/README.md)
 
 ## Usage
 

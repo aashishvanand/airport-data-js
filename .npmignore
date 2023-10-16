@@ -1,5 +1,6 @@
 # Source files (since you're providing bundled code in dist/)
 src/
+data/
 
 # Test files
 tests/
