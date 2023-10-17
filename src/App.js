@@ -13,8 +13,11 @@ import {
   Typography,
   Box,
 } from '@mui/material';
+import { clarity } from 'react-microsoft-clarity';
 
 function App() {
+  clarity.init("jbrv3kn1w7");
+  clarity.consent();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({});
   const [error, setError] = useState('');
