@@ -59,5 +59,6 @@ module.exports = {
     getAirportByIcao,
     getAirportByCityCode,
     getAirportByCountryCode,
-    getAirportByContinent
+    getAirportByContinent,
+    jsonpack
 };
