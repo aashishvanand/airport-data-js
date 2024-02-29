@@ -2,6 +2,11 @@
 
 A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.
 
+#### NPM: https://www.npmjs.com/package/airport-data-js
+
+## Dependancies 
+  https://www.npmjs.com/package/jsonpack
+  
 ## Features
 
 - Retrieve airport data using IATA code.
@@ -13,6 +18,7 @@ A comprehensive library providing easy retrieval of airport data based on IATA, 
 - Efficiently packaged with minimized and gzipped data.
 - **Comprehensive Data Access**: Retrieve airport data using IATA code, ICAO code, city codes, country codes, and continents.
 - **Unique Link Integration**: The first library to provide direct links to [FlightRadar24](https://www.flightradar24.com/), [Radarbox](https://www.radarbox.com/), and [FlightAware](https://www.flightaware.com/) for each airport, giving users immediate access to live flight tracking and airport data.
+- json pack and unpack 
 
 ## Installation
 
@@ -53,6 +59,18 @@ console.log(airportByCountryCode);
 // Retrieve data based on continents
 const airportByContinent = airportData.getAirportByContinent("AS");
 console.log(airportByContinent);
+
+
+// Boonus:
+let json = {my: "json"}
+let jsonpack = airpoirtData.jsonpack
+let pack = jsonpack.pack(json);
+let data = jsonpack.unpack(pack)
+
+console.log("Demo of jsonpack.pack/unpack \n pack: ", pack,"\n data:", data)
+
+
+
 ```
 
 ## Example Data Fields
