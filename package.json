@@ -1,7 +1,7 @@
 {
   "name": "airports-frontend",
   "version": "0.1.0",
-  "homepage": "https://aashishvanand.github.io/airport-data-js/",
+  "homepage": "https://airport-data-js.pages.dev/",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.11.1",
