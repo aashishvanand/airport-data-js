@@ -1,12 +1,12 @@
 {
   "files": {
-    "main.js": "/airport-data-js/static/js/main.099a6610.js",
-    "static/js/787.1f48618d.chunk.js": "/airport-data-js/static/js/787.1f48618d.chunk.js",
-    "index.html": "/airport-data-js/index.html",
-    "main.099a6610.js.map": "/airport-data-js/static/js/main.099a6610.js.map",
-    "787.1f48618d.chunk.js.map": "/airport-data-js/static/js/787.1f48618d.chunk.js.map"
+    "main.js": "/static/js/main.9d13e489.js",
+    "static/js/787.1f48618d.chunk.js": "/static/js/787.1f48618d.chunk.js",
+    "index.html": "/index.html",
+    "main.9d13e489.js.map": "/static/js/main.9d13e489.js.map",
+    "787.1f48618d.chunk.js.map": "/static/js/787.1f48618d.chunk.js.map"
   },
   "entrypoints": [
-    "static/js/main.099a6610.js"
+    "static/js/main.9d13e489.js"
   ]
 }
