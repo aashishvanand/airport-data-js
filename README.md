@@ -17,7 +17,7 @@ A comprehensive library providing easy retrieval of airport data based on IATA, 
 - **Unique Link Integration**: The first library to provide direct links to [FlightRadar24](https://www.flightradar24.com/), [Radarbox](https://www.radarbox.com/), and [FlightAware](https://www.flightaware.com/) for each airport, giving users immediate access to live flight tracking and airport data.
 - 9143 Aiports in total.
 
-## Updates from 1.0.4 to 1.0.5
+## Updates from 1.0.4 to 1.0.6
 - Added 500+ aiports
 - Fixed cities
 - Added Wikipedia links 
