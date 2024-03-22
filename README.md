@@ -3,9 +3,6 @@
 A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.
 
 #### NPM: https://www.npmjs.com/package/airport-data-js
-
-## Dependancies 
-  https://www.npmjs.com/package/jsonpack
   
 ## Features
 
@@ -59,16 +56,6 @@ console.log(airportByCountryCode);
 // Retrieve data based on continents
 const airportByContinent = airportData.getAirportByContinent("AS");
 console.log(airportByContinent);
-
-
-// Boonus:
-let json = {my: "json"}
-let jsonpack = airpoirtData.jsonpack
-let pack = jsonpack.pack(json);
-let data = jsonpack.unpack(pack)
-
-console.log("Demo of jsonpack.pack/unpack \n pack: ", pack,"\n data:", data)
-
 
 
 ```
