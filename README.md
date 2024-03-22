@@ -15,7 +15,12 @@ A comprehensive library providing easy retrieval of airport data based on IATA, 
 - Efficiently packaged with minimized and gzipped data.
 - **Comprehensive Data Access**: Retrieve airport data using IATA code, ICAO code, city codes, country codes, and continents.
 - **Unique Link Integration**: The first library to provide direct links to [FlightRadar24](https://www.flightradar24.com/), [Radarbox](https://www.radarbox.com/), and [FlightAware](https://www.flightaware.com/) for each airport, giving users immediate access to live flight tracking and airport data.
-- json pack and unpack 
+- 9143 Aiports in total.
+
+## Updates from 1.0.4 to 1.0.5
+- Added 500+ aiports
+- Fixed cities
+- Added Wikipedia links 
 
 ## Installation
 
