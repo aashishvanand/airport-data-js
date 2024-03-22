@@ -2,6 +2,8 @@
 
 A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.
 
+#### NPM: https://www.npmjs.com/package/airport-data-js
+  
 ## Features
 
 - Retrieve airport data using IATA code.
@@ -13,6 +15,12 @@ A comprehensive library providing easy retrieval of airport data based on IATA, 
 - Efficiently packaged with minimized and gzipped data.
 - **Comprehensive Data Access**: Retrieve airport data using IATA code, ICAO code, city codes, country codes, and continents.
 - **Unique Link Integration**: The first library to provide direct links to [FlightRadar24](https://www.flightradar24.com/), [Radarbox](https://www.radarbox.com/), and [FlightAware](https://www.flightaware.com/) for each airport, giving users immediate access to live flight tracking and airport data.
+- 9143 Aiports in total.
+
+## Updates from 1.0.4 to 1.0.5
+- Added 500+ aiports
+- Fixed cities
+- Added Wikipedia links 
 
 ## Installation
 
@@ -53,6 +61,8 @@ console.log(airportByCountryCode);
 // Retrieve data based on continents
 const airportByContinent = airportData.getAirportByContinent("AS");
 console.log(airportByContinent);
+
+
 ```
 
 ## Example Data Fields
@@ -71,7 +81,7 @@ For Chennai International Airport:
 | Longitude            | 80.1693                                                  |
 | Altitude (in feet)   | 52                                                       |
 | State                | Tamil Nadu                                               |
-| City                 | Pallavaram                                               |
+| City                 | Chennai                                                  |
 | County               | Kancheepuram                                             |
 | State Code           | Tamil Nadu                                               |
 | Airport Type         | large_airport                                            |
