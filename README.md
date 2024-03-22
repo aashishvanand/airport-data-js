@@ -89,7 +89,7 @@ For Chennai International Airport:
 | Longitude            | 80.1693                                                  |
 | Altitude (in feet)   | 52                                                       |
 | State                | Tamil Nadu                                               |
-| City                 | Pallavaram                                               |
+| City                 | Chennai                                                  |
 | County               | Kancheepuram                                             |
 | State Code           | Tamil Nadu                                               |
 | Airport Type         | large_airport                                            |

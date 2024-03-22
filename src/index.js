@@ -54,59 +54,10 @@ async function getAirportByContinent(continentCode = '') {
     return results;
 }
 
-function convertAirportsToGeoJSON(airports) {
-  // Define the GeoJSON object structure
-  const geoJSON = {
-    type: "FeatureCollection",
-    features: []
-  };
-
-  // Loop through the array of airports and convert each one to a GeoJSON Feature
-  airports.forEach(airport => {
-    const feature = {
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [airport.longitude, airport.latitude]
-      },
-      properties: {
-        iata: airport.iata,
-        icao: airport.icao,
-        airport: airport.airport,
-        city: airport.city,
-        state: airport.state,
-        country_code: airport.country_code,
-        elevation_ft: airport.elevation_ft,
-        region_name: airport.region_name,
-        scheduled_service: airport.scheduled_service,
-        wikipedia_link: airport.wikipedia_link,
-        flightradar24_url: airport.flightradar24_url,
-        radarbox_url: airport.radarbox_url,
-        flightaware_url: airport.flightaware_url
-        // Add other properties as needed
-      }
-    };
-    // Add the feature to the features array
-    geoJSON.features.push(feature);
-  });
-
-  return geoJSON;
-}
-getAirportsGeoJSON() {
-    return convertAirportsToGeoJSON(airportsData)
-}
-getAirportData() {
-    reurn airportData
-}
- 
 module.exports = {
     getAirportByIata,
     getAirportByIcao,
     getAirportByCityCode,
     getAirportByCountryCode,
-    getAirportByContinent,
-    convertAirportsToGeoJSON,
-    getAirportsGeoJSON,
-    getAirportData,
-    jsonpack
+    getAirportByContinent
 };

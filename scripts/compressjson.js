@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 
 async function compressJSON() {
   // Read the original JSON data
-  const originalData = await fs.readJson('airports.json');
+  const originalData = await fs.readJson('data/airports.json');
 
   // Compress the data using jsonpack
   const packedData = jsonpack.pack(originalData);
