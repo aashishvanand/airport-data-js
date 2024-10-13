@@ -1,53 +1,32 @@
 {
   "name": "airports-frontend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "homepage": "https://airport-data-js.pages.dev/",
   "private": true,
   "dependencies": {
-    "@emotion/react": "^11.11.4",
-    "@emotion/styled": "^11.11.0",
-    "@mui/icons-material": "^5.15.14",
-    "@mui/material": "^5.15.14",
-    "@testing-library/jest-dom": "^6.4.2",
-    "@testing-library/react": "^14.2.2",
-    "@testing-library/user-event": "^14.5.2",
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^6.1.3",
+    "@mui/material": "^6.1.3",
     "airport-data-js": "^1.0.6",
-    "axios": "^1.6.8",
-    "path-browserify": "^1.0.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-microsoft-clarity": "^1.2.0",
-    "react-scripts": "^5.0.1",
-    "web-vitals": "^3.5.2"
-  },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -b gh-pages -d build"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "leaflet": "^1.9.4",
+    "next": "^14.2.15",
+    "next-themes": "^0.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1",
+    "react-microsoft-clarity": "^1.2.0"
   },
   "devDependencies": {
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "gh-pages": "^6.0.0"
+    "@types/node": "22.7.5",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^13.5.0"
+  },
+  "scripts": {
+    "start": "next start",
+    "build": "next build",
+    "dev": "next dev",
+    "lint": "next lint",
+    "test": "react-scripts test"
   }
 }
