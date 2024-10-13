@@ -1,19 +1,40 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import dynamic from 'next/dynamic'
-import { useTheme } from '@mui/material/styles'
-import { AppBar, Toolbar, Typography, Container, TextField, Button, Tab, Tabs, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Link } from '@mui/material'
-import Brightness4Icon from '@mui/icons-material/Brightness4'
-import Brightness7Icon from '@mui/icons-material/Brightness7'
-import { getAirportByIata, getAirportByIcao, getAirportByCityCode, getAirportByCountryCode, getAirportByContinent } from 'airport-data-js'
-import { useColorMode } from './providers'
-
-// Dynamically import Leaflet components
-const MapContainer = dynamic(() => import('react-leaflet').then((mod) => mod.MapContainer), { ssr: false })
-const TileLayer = dynamic(() => import('react-leaflet').then((mod) => mod.TileLayer), { ssr: false })
-const Marker = dynamic(() => import('react-leaflet').then((mod) => mod.Marker), { ssr: false })
-const Popup = dynamic(() => import('react-leaflet').then((mod) => mod.Popup), { ssr: false })
+import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { useTheme } from '@mui/material/styles';
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Container,
+  TextField,
+  Button,
+  Tab,
+  Tabs,
+  Box,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Link
+} from '@mui/material';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import {
+  getAirportByIata,
+  getAirportByIcao,
+  getAirportByCityCode,
+  getAirportByCountryCode,
+  getAirportByContinent
+} from 'airport-data-js';
+import { useColorMode } from './providers';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { LatLngExpression, LatLngTuple } from 'leaflet';
 
 // Function to create a custom flight icon for map markers
 const createFlightIcon = (isDarkMode) => {
@@ -32,7 +53,7 @@ export default function AirportSearch() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [error, setError] = useState('')
-  const [mapCenter, setMapCenter] = useState([20, 0])
+  const [mapCenter, setMapCenter] = useState<LatLngExpression>([20, 0]);
   const [searchType, setSearchType] = useState('iata')
   const [mapZoom, setMapZoom] = useState(2)
   const theme = useTheme()
@@ -78,21 +99,24 @@ export default function AirportSearch() {
           .filter(airport => !isNaN(airport.latitude) && !isNaN(airport.longitude))
 
         if (validAirports.length > 0) {
-          setResults(validAirports)
-          setMapCenter([validAirports[0].latitude, validAirports[0].longitude])
-          setMapZoom(10)
-          setError('')
+          setResults(validAirports);
+          setMapCenter([
+            Number(validAirports[0].latitude),
+            Number(validAirports[0].longitude)
+          ]);
+          setMapZoom(10);
+          setError('');
         } else {
-          setResults([])
-          setError('No valid coordinates found for the airport(s).')
+          setResults([]);
+          setError('No valid coordinates found for the airport(s).');
         }
       } else {
-        setResults([])
-        setError(`No airport found with the provided ${searchType.toUpperCase()} code.`)
+        setResults([]);
+        setError(`No airport found with the provided ${searchType.toUpperCase()} code.`);
       }
     } catch (err) {
-      console.error(err)
-      setError('An error occurred while fetching the data.')
+      console.error(err);
+      setError('An error occurred while fetching the data.');
     }
   }
 
@@ -173,34 +197,41 @@ export default function AirportSearch() {
 
         {/* Map section */}
         <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="h6" gutterBottom>Airport Map</Typography>
-          <Box sx={{ height: 400, width: '100%' }}>
-            {typeof window !== 'undefined' && (
-              <MapContainer key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`} center={mapCenter} zoom={mapZoom} style={{ height: '100%', width: '100%' }}>
-                <TileLayer
-                  url={theme.palette.mode === 'dark' ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
-                />
-                {results.map((airport, index) => (
-                  airport.latitude && airport.longitude ? (
-                    <Marker 
-                      key={index} 
-                      position={[airport.latitude, airport.longitude]} 
-                      icon={createFlightIcon(theme.palette.mode === 'dark')}
-                    >
-                      <Popup>
-                        <b>{airport.airport}</b><br />
-                        IATA: {airport.iata}<br />
-                        ICAO: {airport.icao}<br />
-                        City: {airport.city}<br />
-                        Country: {airport.country_code}
-                      </Popup>
-                    </Marker>
-                  ) : null
-                ))}
-              </MapContainer>
-            )}
-          </Box>
-        </Paper>
+        <Typography variant="h6" gutterBottom>Airport Map</Typography>
+        <Box sx={{ height: 400, width: '100%' }}>
+          {typeof window !== 'undefined' && (
+            <MapContainer
+              key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
+              center={mapCenter}
+              zoom={mapZoom}
+              style={{ height: '100%', width: '100%' }}
+            >
+              <TileLayer
+                url={theme.palette.mode === 'dark' 
+                  ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' 
+                  : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
+              />
+              {results.map((airport, index) => (
+                airport.latitude && airport.longitude ? (
+                  <Marker 
+                    key={index} 
+                    position={[airport.latitude, airport.longitude] as LatLngTuple}
+                    icon={createFlightIcon(theme.palette.mode === 'dark')}
+                  >
+                    <Popup>
+                      <b>{airport.airport}</b><br />
+                      IATA: {airport.iata}<br />
+                      ICAO: {airport.icao}<br />
+                      City: {airport.city}<br />
+                      Country: {airport.country_code}
+                    </Popup>
+                  </Marker>
+                ) : null
+              ))}
+            </MapContainer>
+          )}
+        </Box>
+      </Paper>
 
         {/* Airport details table */}
         {results.length > 0 && (
