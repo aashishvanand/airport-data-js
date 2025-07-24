@@ -1,5 +1,4 @@
 name: Release and Publish
-
 on:
   push:
     branches:
@@ -18,21 +17,21 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
-
+      
       - name: Install dependencies
         run: npm ci
-
+      
+      - name: Build package
+        run: npm run build
+      
       - name: Run tests
         run: npm test
-
-      - name: Run build
-        run: npm run build
 
   publish:
     needs: test
@@ -40,27 +39,27 @@ jobs:
     if: github.ref == 'refs/heads/release'
     permissions:
       contents: write
-      id-token: write  # For provenance
+      id-token: write # For provenance
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
-
+      
       - name: Install dependencies
         run: npm ci
-
-      - name: Run tests
-        run: npm test
-
+      
       - name: Build package
         run: npm run build
-
+      
+      - name: Run tests
+        run: npm test
+      
       - name: Check if version already published
         id: check-version
         run: |
@@ -73,13 +72,13 @@ jobs:
           else
             echo "should-publish=false" >> $GITHUB_OUTPUT
           fi
-
+      
       - name: Publish to NPM
         if: steps.check-version.outputs.should-publish == 'true'
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+      
       - name: Create GitHub Release
         if: steps.check-version.outputs.should-publish == 'true'
         uses: actions/create-release@v1
@@ -90,29 +89,29 @@ jobs:
           release_name: Release v${{ steps.check-version.outputs.package-version }}
           body: |
             ## What's New in v${{ steps.check-version.outputs.package-version }}
-            
+
             ### 🆕 New Features
             - Enhanced airport data with external links
             - Timezone-based airport lookup
             - Advanced multi-criteria filtering
             - Autocomplete suggestions functionality
             - External links to Wikipedia, websites, and flight tracking services
-            
+
             ### 🔄 Improvements
             - Better error handling and validation
             - More comprehensive airport data structure
             - Improved type filtering with partial matching
             - Enhanced geographic calculations
-            
+
             ### 📦 Installation
             ```bash
             npm install airport-data-js@${{ steps.check-version.outputs.package-version }}
             ```
-            
+
             See [README.md](https://github.com/${{ github.repository }}/blob/main/README.md) for full documentation.
           draft: false
           prerelease: false
-
+      
       - name: Skip publish (version unchanged)
         if: steps.check-version.outputs.should-publish == 'false'
         run: |
