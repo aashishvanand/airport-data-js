@@ -6,6 +6,9 @@ on:
       - release
   workflow_dispatch: # Allow manual triggering
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -35,6 +38,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/release'
+    permissions:
+      contents: write
+      id-token: write  # For provenance
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
