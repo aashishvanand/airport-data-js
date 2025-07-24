@@ -1,174 +1,282 @@
-# airport-data-js
+# Airport Data JS
 
-A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Ideal for developers building applications related to aviation, travel, and geography.
-
-#### NPM: https://www.npmjs.com/package/airport-data-js
-  
-## Features
-
-- Retrieve airport data using IATA code.
-- Retrieve airport data using ICAO code.
-- Fetch data using city codes.
-- Fetch data using country codes.
-- Retrieve data based on continents.
-- Built-in error handling for invalid input formats.
-- Efficiently packaged with minimized and gzipped data.
-- **Comprehensive Data Access**: Retrieve airport data using IATA code, ICAO code, city codes, country codes, and continents.
-- **Unique Link Integration**: The first library to provide direct links to [FlightRadar24](https://www.flightradar24.com/), [Radarbox](https://www.radarbox.com/), and [FlightAware](https://www.flightaware.com/) for each airport, giving users immediate access to live flight tracking and airport data.
-- 9143 Aiports in total.
-
-## Updates from 1.0.4 to 1.0.6
-- Added 500+ aiports
-- Fixed cities
-- Added Wikipedia links 
+A comprehensive JavaScript library for retrieving airport information by IATA codes, ICAO codes, and various other criteria. This library provides easy access to a large dataset of airports worldwide with detailed information including coordinates, timezone, type, and external links.
 
 ## Installation
-
-You can install `airport-data-js` using npm:
 
 ```bash
 npm install airport-data-js
 ```
 
-For detailed instructions on how to use this library in different environments, please refer to the following links:
+## Features
 
-- [Node.js Instructions](https://github.com/aashishvanand/airport-data-js/blob/nodejs-sample/README.md)
-- [React Instructions](https://github.com/aashishvanand/airport-data-js/blob/reactjs-sample/README.md)
+- 🌍 Comprehensive airport database with worldwide coverage
+- 🔍 Search by IATA codes, ICAO codes, country, continent, and more
+- 📍 Geographic proximity search with customizable radius
+- 🔗 External links to Wikipedia, airport websites, and flight tracking services
+- 📏 Distance calculation between airports
+- 🏷️ Filter by airport type (large_airport, medium_airport, small_airport, heliport, seaplane_base)
+- 🕒 Timezone-based airport lookup
+- 💡 Autocomplete suggestions for search interfaces
+- 🎯 Advanced multi-criteria filtering
 
-## Usage
+## Airport Data Structure
 
-Here's how you can use the library:
+Each airport object contains the following fields:
 
 ```javascript
-const airportData = require('airport-data-js');
-
-// Retrieve airport data using IATA code
-const airportByIATA = airportData.getAirportByIata("AAA");
-console.log(airportByIATA);
-
-// Retrieve airport data using ICAO code
-const airportByICAO = airportData.getAirportByIcao("NTGA");
-console.log(airportByICAO);
-
-// Fetch data using city codes
-const airportByCityCode = airportData.getAirportByCityCode("NYC");
-console.log(airportByCityCode);
-
-// Fetch data using country codes
-const airportByCountryCode = airportData.getAirportByCountryCode("US");
-console.log(airportByCountryCode);
-
-// Retrieve data based on continents
-const airportByContinent = airportData.getAirportByContinent("AS");
-console.log(airportByContinent);
-
-
+{
+  iata: "SIN",                    // 3-letter IATA code
+  icao: "WSSS",                   // 4-letter ICAO code
+  time: "Asia/Singapore",         // Timezone identifier
+  country_code: "SG",             // 2-letter country code
+  continent: "AS",                // 2-letter continent code (AS, EU, NA, SA, AF, OC, AN)
+  airport: "Singapore Changi Airport",  // Airport name
+  latitude: "1.35019",            // Latitude coordinate
+  longitude: "103.994003",        // Longitude coordinate
+  elevation: "22",                // Elevation in feet
+  type: "large_airport",          // Airport type
+  scheduled_service: true,        // Has scheduled commercial service
+  wikipedia: "https://en.wikipedia.org/wiki/Singapore_Changi_Airport",
+  website: "https://www.changiairport.com",
+  runway_length: "13200",         // Longest runway in feet
+  flightradar24_url: "https://www.flightradar24.com/airport/SIN",
+  radarbox_url: "https://www.radarbox.com/airport/WSSS",
+  flightaware_url: "https://www.flightaware.com/live/airport/WSSS"
+}
 ```
 
-## Example Data Fields
+## Basic Usage
 
-For Chennai International Airport:
+```javascript
+const {
+  getAirportByIata,
+  getAirportByIcao,
+  searchByName,
+  findNearbyAirports
+} = require('airport-data-js');
 
-| Field Name           | Data                                                     |
-|----------------------|----------------------------------------------------------|
-| IATA                 | MAA                                                      |
-| ICAO                 | VOMM                                                     |
-| Time Zone            | Asia/Kolkata                                             |
-| City Code            | MAA                                                      |
-| Country Code         | IN                                                       |
-| Name                 | Chennai International Airport                            |
-| Latitude             | 12.99                                                    |
-| Longitude            | 80.1693                                                  |
-| Altitude (in feet)   | 52                                                       |
-| State                | Tamil Nadu                                               |
-| City                 | Chennai                                                  |
-| County               | Kancheepuram                                             |
-| State Code           | Tamil Nadu                                               |
-| Airport Type         | large_airport                                            |
-| Continent            | AS                                                       |
-| State Abbreviation   | IN-TN                                                    |
-| International        | TRUE                                                     |
-| Wikipedia Link       | [Wikipedia](https://en.wikipedia.org/wiki/Chennai_International_Airport)|
-| Official Website     | [Chennai Airport](http://chennaiairport.com)            |
-| Location ID          | 12513629                                                 |
-| Phone Number         | 044-2340551                                              |
-| Runway Length (in meters) | 10050                                               |
-| Flightradar24        | [Flightradar24](https://www.flightradar24.com/airport/MAA)|
-| Radarbox             | [Radarbox](https://www.radarbox.com/airport/VOMM)       |
-| Flightaware Link     | [Flightaware](https://www.flightaware.com/live/airport/VOMM)|
+// Get airport by IATA code
+const [airport] = await getAirportByIata('SIN');
+console.log(airport.airport); // "Singapore Changi Airport"
 
-### Singapore Changi Airport:
+// Get airport by ICAO code
+const [airport] = await getAirportByIcao('WSSS');
+console.log(airport.country_code); // "SG"
 
-| Field Name           | Data                                                     |
-|----------------------|----------------------------------------------------------|
-| IATA                 | SIN                                                      |
-| ICAO                 | WSSS                                                     |
-| Time Zone            | Asia/Singapore                                           |
-| City Code            | SIN                                                      |
-| Country Code         | SG                                                       |
-| Name                 | Singapore Changi Airport                                 |
-| Latitude             | 1.35019                                                  |
-| Longitude            | 103.994                                                  |
-| Altitude (in feet)   | 22                                                       |
-| State                | Singapore                                                |
-| City                 | Singapore                                                |
-| County               | Singapore                                                |
-| State Code           | South East                                               |
-| Airport Type         | large_airport                                            |
-| Continent            | AS                                                       |
-| State Abbreviation   | SG-04                                                    |
-| International        | TRUE                                                     |
-| Wikipedia Link       | [Wikipedia](https://en.wikipedia.org/wiki/Singapore_Changi_Airport)|
-| Official Website     | [Changi Airport](http://www.changiairport.com/)         |
-| Location ID          | 12517525                                                 |
-| Phone Number         | (65) 6542 1122                                           |
-| Runway Length (in meters) | 13200                                               |
-| Flightradar24         | [Flightradar24](https://www.flightradar24.com/airport/SIN)|
-| Radarbox              | [Radarbox](https://www.radarbox.com/airport/WSSS)       |
-| Flightaware           | [Flightaware](https://www.flightaware.com/live/airport/WSSS)|
+// Search airports by name
+const airports = await searchByName('Singapore');
+console.log(airports.length); // Multiple airports matching "Singapore"
 
-
-## Running the Project Locally
-
-1. Clone the repository:
-
-```bash
-git clone https://github.com/aashishvanand/airport-data-js.git
+// Find nearby airports (within 50km of coordinates)
+const nearby = await findNearbyAirports(1.35019, 103.994003, 50);
+console.log(nearby); // Airports near Singapore Changi
 ```
 
-2. Change into the cloned directory:
+## API Reference
 
-```bash
-cd airport-data-js
+### Core Search Functions
+
+#### `getAirportByIata(iataCode)`
+Finds airports by their 3-letter IATA code.
+
+```javascript
+const airports = await getAirportByIata('LHR');
+// Returns array of airports with IATA code 'LHR'
 ```
 
-3. Install the necessary dependencies:
+#### `getAirportByIcao(icaoCode)`
+Finds airports by their 4-character ICAO code.
 
-```bash
-npm install
+```javascript
+const airports = await getAirportByIcao('EGLL');
+// Returns array of airports with ICAO code 'EGLL'
 ```
 
-4. To bundle the source code using Webpack:
+#### `searchByName(query)`
+Searches for airports by name (case-insensitive, minimum 2 characters).
 
-```bash
-npm run build
+```javascript
+const airports = await searchByName('Heathrow');
+// Returns airports with 'Heathrow' in their name
 ```
 
-5. To run tests:
+### Geographic Functions
 
-```bash
-npm test
+#### `findNearbyAirports(lat, lon, radiusKm)`
+Finds airports within a specified radius of given coordinates.
+
+```javascript
+const nearby = await findNearbyAirports(51.5074, -0.1278, 100);
+// Returns airports within 100km of London coordinates
 ```
 
-## Troubleshooting
+#### `calculateDistance(code1, code2)`
+Calculates the great-circle distance between two airports using IATA or ICAO codes.
 
-1. **Issue**: "Module not found: Error: Can't resolve 'babel-loader'".
-   **Solution**: Ensure that you have installed all the necessary dependencies. If the issue persists, reinstall the library.
+```javascript
+const distance = await calculateDistance('LHR', 'JFK');
+// Returns distance in kilometers (approximately 5540)
+```
 
-2. **Issue**: "Error: Automatic publicPath is not supported in this browser".
-   **Solution**: Ensure that you're using the library in a supported environment (Node.js or a modern browser).
+### Filtering Functions
 
-If you encounter other issues, consider raising an issue on the [GitHub repository](https://github.com/aashishvanand/airport-data-js/issues).
+#### `getAirportByCountryCode(countryCode)`
+Finds all airports in a specific country.
+
+```javascript
+const usAirports = await getAirportByCountryCode('US');
+// Returns all airports in the United States
+```
+
+#### `getAirportByContinent(continentCode)`
+Finds all airports on a specific continent.
+
+```javascript
+const asianAirports = await getAirportByContinent('AS');
+// Returns all airports in Asia
+// Continent codes: AS, EU, NA, SA, AF, OC, AN
+```
+
+#### `getAirportsByType(type)`
+Finds airports by their type.
+
+```javascript
+const largeAirports = await getAirportsByType('large_airport');
+// Available types: large_airport, medium_airport, small_airport, heliport, seaplane_base
+
+// Convenience search for all airports
+const allAirports = await getAirportsByType('airport');
+// Returns large_airport, medium_airport, and small_airport
+```
+
+#### `getAirportsByTimezone(timezone)`
+Finds all airports within a specific timezone.
+
+```javascript
+const londonAirports = await getAirportsByTimezone('Europe/London');
+// Returns airports in London timezone
+```
+
+### Advanced Functions
+
+#### `findAirports(filters)`
+Finds airports matching multiple criteria.
+
+```javascript
+// Find large airports in Great Britain with scheduled service
+const airports = await findAirports({
+  country_code: 'GB',
+  type: 'large_airport',
+  has_scheduled_service: true
+});
+
+// Find airports with minimum runway length
+const longRunwayAirports = await findAirports({
+  min_runway_ft: 10000
+});
+```
+
+#### `getAutocompleteSuggestions(query)`
+Provides autocomplete suggestions for search interfaces (returns max 10 results).
+
+```javascript
+const suggestions = await getAutocompleteSuggestions('Lon');
+// Returns up to 10 airports matching 'Lon' in name or IATA code
+```
+
+#### `getAirportLinks(code)`
+Gets external links for an airport using IATA or ICAO code.
+
+```javascript
+const links = await getAirportLinks('SIN');
+// Returns:
+// {
+//   website: "https://www.changiairport.com",
+//   wikipedia: "https://en.wikipedia.org/wiki/Singapore_Changi_Airport",
+//   flightradar24: "https://www.flightradar24.com/airport/SIN",
+//   radarbox: "https://www.radarbox.com/airport/WSSS",
+//   flightaware: "https://www.flightaware.com/live/airport/WSSS"
+// }
+```
+
+## Error Handling
+
+All functions return promises and may throw errors for invalid input or when no data is found.
+
+```javascript
+try {
+  const airport = await getAirportByIata('XYZ');
+} catch (error) {
+  console.error(error.message); // "No data found for IATA code: XYZ"
+}
+```
+
+## Examples
+
+### Find airports near a city
+```javascript
+// Find airports within 100km of Paris
+const parisAirports = await findNearbyAirports(48.8566, 2.3522, 100);
+console.log(`Found ${parisAirports.length} airports near Paris`);
+```
+
+### Get flight distance
+```javascript
+// Calculate distance between Singapore and London
+const distance = await calculateDistance('SIN', 'LHR');
+console.log(`Distance: ${Math.round(distance)} km`);
+```
+
+### Build an airport search interface
+```javascript
+// Get autocomplete suggestions
+const suggestions = await getAutocompleteSuggestions('New York');
+suggestions.forEach(airport => {
+  console.log(`${airport.iata} - ${airport.airport}`);
+});
+```
+
+### Filter airports by multiple criteria
+```javascript
+// Find large airports in Asia with scheduled service
+const asianHubs = await findAirports({
+  continent: 'AS',
+  type: 'large_airport',
+  has_scheduled_service: true
+});
+```
+
+## Changelog
+
+### Version 2.0.0 (Latest)
+
+#### 🆕 New Features
+- **`getAirportsByTimezone(timezone)`** - Find airports by timezone
+- **`getAirportLinks(code)`** - Get external links for airports
+- **`findAirports(filters)`** - Advanced multi-criteria filtering
+- **`getAutocompleteSuggestions(query)`** - Autocomplete functionality
+- **Enhanced `getAirportsByType(type)`** - Now supports convenience search for "airport" type
+- **External links support** - Wikipedia, websites, and flight tracking URLs
+- **Timezone information** - Complete timezone data for all airports
+- **Runway length data** - Airport runway information included
+- **Scheduled service indicator** - Whether airports have commercial scheduled service
+
+#### 🔄 Improvements
+- Better error handling and validation
+- More comprehensive airport data structure
+- Improved type filtering with partial matching
+- Enhanced geographic calculations
+- Case-insensitive search improvements
+
+#### ❌ Removed from v1.x
+- Legacy data format support
+- Simplified airport objects (expanded to include more fields)
+- Basic filtering (replaced with advanced `findAirports` function)
+
+## Data Source
+
+This library uses a comprehensive dataset of worldwide airports with regular updates to ensure accuracy and completeness.
 
 ## License
 
