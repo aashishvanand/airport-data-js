@@ -29,26 +29,19 @@ function validateRegex(data, regex, errorMessage) {
  */
 async function _getAirportByCode(code) {
     if (typeof code !== 'string') return null;
-
-    // Check if it looks like an IATA code
-    if (code.length === 3) {
-        try {
-            const [airport] = await getAirportByIata(code);
-            return airport;
-        } catch (error) {
-            return null;
-        }
+    
+    // Validate and filter based on IATA code format (3 uppercase letters)
+    if (/^[A-Z]{3}$/.test(code)) {
+        const results = airportsData.filter(airport => airport.iata === code);
+        return results.length > 0 ? results[0] : null;
     }
-    // Check if it looks like an ICAO code
-    else if (code.length === 4) {
-        try {
-            const [airport] = await getAirportByIcao(code);
-            return airport;
-        } catch (error) {
-            return null;
-        }
+    
+    // Validate and filter based on ICAO code format (4 uppercase letters/numbers)
+    if (/^[A-Z0-9]{4}$/.test(code)) {
+        const results = airportsData.filter(airport => airport.icao === code);
+        return results.length > 0 ? results[0] : null;
     }
-
+    
     return null; // Return null if format is not recognized
 }
 
