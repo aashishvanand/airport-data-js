@@ -10,26 +10,42 @@ import { validateIataCode, validateIcaoCode } from 'airport-data-js';
 export default function ValidationView() {
     const [iataInput, setIataInput] = useState('');
     const [icaoInput, setIcaoInput] = useState('');
+    const [iataStatus, setIataStatus] = useState<boolean | null>(null);
+    const [icaoStatus, setIcaoStatus] = useState<boolean | null>(null);
 
-    // Wrapper for validation to handle async/sync nature if unknown
-    const isValidIata = (code: string) => {
-        if (!code) return null;
-        try {
-            // @ts-ignore
-            return validateIataCode(code);
-        } catch { return false; }
-    }
+    React.useEffect(() => {
+        const checkIata = async () => {
+            if (iataInput.length === 3) {
+                try {
+                    // @ts-ignore
+                    const result = await validateIataCode(iataInput.toUpperCase());
+                    setIataStatus(result);
+                } catch (e) {
+                    setIataStatus(false);
+                }
+            } else {
+                setIataStatus(null);
+            }
+        };
+        checkIata();
+    }, [iataInput]);
 
-    const isValidIcao = (code: string) => {
-        if (!code) return null;
-        try {
-            // @ts-ignore
-            return validateIcaoCode(code);
-        } catch { return false; }
-    }
-
-    const iataStatus = isValidIata(iataInput.toUpperCase());
-    const icaoStatus = isValidIcao(icaoInput.toUpperCase());
+    React.useEffect(() => {
+        const checkIcao = async () => {
+            if (icaoInput.length === 4) {
+                try {
+                    // @ts-ignore
+                    const result = await validateIcaoCode(icaoInput.toUpperCase());
+                    setIcaoStatus(result);
+                } catch (e) {
+                    setIcaoStatus(false);
+                }
+            } else {
+                setIcaoStatus(null);
+            }
+        };
+        checkIcao();
+    }, [icaoInput]);
 
     return (
         <Box>
