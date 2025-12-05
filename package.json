@@ -1,6 +1,6 @@
 {
   "name": "airport-data-js",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "commonjs",
   "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents.",
   "main": "dist/airport-data.min.js",
@@ -8,7 +8,8 @@
     "test": "jest --config jest.config.cjs",
     "build:lib": "webpack --config webpack.node.cjs",
     "build:dist": "webpack --config webpack.browser.cjs",
-    "build": "npm run build:lib && npm run build:dist"
+    "build": "npm run build:lib && npm run build:dist",
+    "check:duplicates": "node scripts/check_duplicates.js"
   },
   "dependencies": {
     "jsonpack": "^1.1.5"
@@ -46,17 +47,22 @@
   },
   "homepage": "https://airport-data-js.aashishvanand.me/",
   "devDependencies": {
-    "fs-extra": "^11.3.0",
-    "@babel/core": "^7.28.0",
+    "@babel/core": "^7.28.5",
     "@babel/plugin-transform-modules-commonjs": "^7.27.1",
-    "@babel/preset-env": "^7.28.0",
+    "@babel/preset-env": "^7.28.5",
     "arraybuffer-loader": "^1.0.8",
-    "babel-jest": "^30.0.5",
+    "babel-jest": "^30.2.0",
     "babel-loader": "^10.0.0",
-    "jest": "^30.0.5",
+    "countries-and-timezones": "^3.8.0",
+    "countries-list": "^3.2.2",
+    "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
+    "fs-extra": "^11.3.2",
+    "geo-tz": "^8.1.4",
+    "jest": "^30.2.0",
     "path-browserify": "^1.0.1",
     "raw-loader": "^4.0.2",
-    "webpack": "^5.100.2",
+    "webpack": "^5.103.0",
     "webpack-cli": "^6.0.1"
   }
 }
