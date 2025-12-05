@@ -19,6 +19,10 @@ npm install airport-data-js
 - 🕒 Timezone-based airport lookup
 - 💡 Autocomplete suggestions for search interfaces
 - 🎯 Advanced multi-criteria filtering
+- 📊 Statistical analysis by country and continent
+- 🔢 Bulk operations for multiple airports
+- ✅ Code validation utilities
+- 🎚️ Airport ranking by runway length and elevation
 
 ## Airport Data Structure
 
@@ -200,6 +204,135 @@ const links = await getAirportLinks('SIN');
 // }
 ```
 
+### Statistical & Analytical Functions
+
+#### `getAirportStatsByCountry(countryCode)`
+Gets comprehensive statistics about airports in a specific country.
+
+```javascript
+const stats = await getAirportStatsByCountry('US');
+// Returns:
+// {
+//   total: 5432,
+//   byType: {
+//     large_airport: 139,
+//     medium_airport: 467,
+//     small_airport: 4826
+//   },
+//   withScheduledService: 606,
+//   averageRunwayLength: 5234,
+//   averageElevation: 1245,
+//   timezones: ['America/New_York', 'America/Chicago', ...]
+// }
+```
+
+#### `getAirportStatsByContinent(continentCode)`
+Gets comprehensive statistics about airports on a specific continent.
+
+```javascript
+const stats = await getAirportStatsByContinent('AS');
+// Returns statistics including count by type, by country, 
+// scheduled service count, average runway length, elevation, and timezones
+```
+
+#### `getLargestAirportsByContinent(continentCode, limit, sortBy)`
+Gets the largest airports on a continent by runway length or elevation.
+
+```javascript
+// Get top 5 airports in Asia by runway length
+const airports = await getLargestAirportsByContinent('AS', 5, 'runway');
+
+// Get top 10 airports in South America by elevation
+const highAltitude = await getLargestAirportsByContinent('SA', 10, 'elevation');
+```
+
+### Bulk Operations
+
+#### `getMultipleAirports(codes)`
+Fetches multiple airports by their IATA or ICAO codes in one call.
+
+```javascript
+const airports = await getMultipleAirports(['SIN', 'LHR', 'JFK', 'WSSS']);
+// Returns array of airport objects (null for codes not found)
+// Efficiently fetches multiple airports at once
+```
+
+#### `calculateDistanceMatrix(codes)`
+Calculates distances between all pairs of airports in a list.
+
+```javascript
+const matrix = await calculateDistanceMatrix(['SIN', 'LHR', 'JFK']);
+// Returns:
+// {
+//   airports: [
+//     { code: 'SIN', name: 'Singapore Changi Airport', iata: 'SIN', icao: 'WSSS' },
+//     { code: 'LHR', name: 'London Heathrow Airport', iata: 'LHR', icao: 'EGLL' },
+//     { code: 'JFK', name: 'John F Kennedy International Airport', iata: 'JFK', icao: 'KJFK' }
+//   ],
+//   distances: {
+//     SIN: { SIN: 0, LHR: 10872, JFK: 15344 },
+//     LHR: { SIN: 10872, LHR: 0, JFK: 5540 },
+//     JFK: { SIN: 15344, LHR: 5540, JFK: 0 }
+//   }
+// }
+```
+
+#### `findNearestAirport(lat, lon, filters)`
+Finds the single nearest airport to given coordinates, optionally with filters.
+
+```javascript
+// Find nearest airport to coordinates
+const nearest = await findNearestAirport(1.35019, 103.994003);
+// Returns airport object with additional 'distance' field in km
+
+// Find nearest large airport with scheduled service
+const nearestHub = await findNearestAirport(1.35019, 103.994003, {
+  type: 'large_airport',
+  has_scheduled_service: true
+});
+```
+
+### Validation & Utilities
+
+#### `validateIataCode(code)`
+Validates if an IATA code exists in the database.
+
+```javascript
+const isValid = await validateIataCode('SIN'); // true
+const isInvalid = await validateIataCode('XYZ'); // false
+const isBadFormat = await validateIataCode('ABCD'); // false
+```
+
+#### `validateIcaoCode(code)`
+Validates if an ICAO code exists in the database.
+
+```javascript
+const isValid = await validateIcaoCode('WSSS'); // true
+const isInvalid = await validateIcaoCode('XXXX'); // false
+```
+
+#### `getAirportCount(filters)`
+Gets the count of airports matching the given filters without fetching all data.
+
+```javascript
+// Get total airport count
+const total = await getAirportCount();
+
+// Get count of large airports in the US
+const count = await getAirportCount({
+  country_code: 'US',
+  type: 'large_airport'
+});
+```
+
+#### `isAirportOperational(code)`
+Checks if an airport has scheduled commercial service.
+
+```javascript
+const operational = await isAirportOperational('SIN'); // true
+const notOperational = await isAirportOperational('SOME_SMALL_AIRPORT'); // false
+```
+
 ## Error Handling
 
 All functions return promises and may throw errors for invalid input or when no data is found.
@@ -247,32 +380,65 @@ const asianHubs = await findAirports({
 });
 ```
 
+### Get airport statistics
+```javascript
+// Get comprehensive statistics for US airports
+const usStats = await getAirportStatsByCountry('US');
+console.log(`Total airports: ${usStats.total}`);
+console.log(`Large airports: ${usStats.byType.large_airport}`);
+console.log(`Average runway length: ${usStats.averageRunwayLength} ft`);
+
+// Get statistics for Asian airports
+const asiaStats = await getAirportStatsByContinent('AS');
+console.log(`Countries with airports: ${Object.keys(asiaStats.byCountry).length}`);
+```
+
+### Bulk operations
+```javascript
+// Fetch multiple airports at once
+const airports = await getMultipleAirports(['SIN', 'LHR', 'JFK', 'NRT']);
+airports.forEach(airport => {
+  if (airport) {
+    console.log(`${airport.iata}: ${airport.airport}`);
+  }
+});
+
+// Calculate distance matrix for route planning
+const matrix = await calculateDistanceMatrix(['SIN', 'LHR', 'JFK']);
+console.log(`Distance from SIN to LHR: ${matrix.distances.SIN.LHR} km`);
+console.log(`Distance from LHR to JFK: ${matrix.distances.LHR.JFK} km`);
+```
+
+### Validation utilities
+```javascript
+// Validate airport codes before processing
+const codes = ['SIN', 'XYZ', 'LHR', 'ABCD'];
+for (const code of codes) {
+  const isValid = await validateIataCode(code);
+  console.log(`${code}: ${isValid ? 'Valid' : 'Invalid'}`);
+}
+
+// Check if airport is operational
+const operational = await isAirportOperational('SIN');
+console.log(`Singapore Changi is operational: ${operational}`);
+```
+
+### Find nearest airport
+```javascript
+// Find nearest airport to current location
+const nearest = await findNearestAirport(1.35019, 103.994003);
+console.log(`Nearest airport: ${nearest.airport} (${nearest.distance} km away)`);
+
+// Find nearest large airport with scheduled service
+const nearestHub = await findNearestAirport(1.35019, 103.994003, {
+  type: 'large_airport',
+  has_scheduled_service: true
+});
+```
+
 ## Changelog
 
-### Version 2.0.0 (Latest)
-
-#### 🆕 New Features
-- **`getAirportsByTimezone(timezone)`** - Find airports by timezone
-- **`getAirportLinks(code)`** - Get external links for airports
-- **`findAirports(filters)`** - Advanced multi-criteria filtering
-- **`getAutocompleteSuggestions(query)`** - Autocomplete functionality
-- **Enhanced `getAirportsByType(type)`** - Now supports convenience search for "airport" type
-- **External links support** - Wikipedia, websites, and flight tracking URLs
-- **Timezone information** - Complete timezone data for all airports
-- **Runway length data** - Airport runway information included
-- **Scheduled service indicator** - Whether airports have commercial scheduled service
-
-#### 🔄 Improvements
-- Better error handling and validation
-- More comprehensive airport data structure
-- Improved type filtering with partial matching
-- Enhanced geographic calculations
-- Case-insensitive search improvements
-
-#### ❌ Removed from v1.x
-- Legacy data format support
-- Simplified airport objects (expanded to include more fields)
-- Basic filtering (replaced with advanced `findAirports` function)
+See [CHANGELOG.md](CHANGELOG.md) for the full version history and release notes.
 
 ## Data Source
 
