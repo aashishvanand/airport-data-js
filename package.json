@@ -1,6 +1,6 @@
 {
   "name": "airport-data-js",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "type": "commonjs",
   "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents.",
   "main": "dist/airport-data.min.js",
@@ -47,9 +47,9 @@
   },
   "homepage": "https://airport-data-js.aashishvanand.me/",
   "devDependencies": {
-    "@babel/core": "^7.28.5",
-    "@babel/plugin-transform-modules-commonjs": "^7.27.1",
-    "@babel/preset-env": "^7.28.5",
+    "@babel/core": "^7.28.6",
+    "@babel/plugin-transform-modules-commonjs": "^7.28.6",
+    "@babel/preset-env": "^7.28.6",
     "arraybuffer-loader": "^1.0.8",
     "babel-jest": "^30.2.0",
     "babel-loader": "^10.0.0",
@@ -57,12 +57,12 @@
     "countries-list": "^3.2.2",
     "csv-parse": "^6.1.0",
     "csv-stringify": "^6.6.0",
-    "fs-extra": "^11.3.2",
-    "geo-tz": "^8.1.4",
+    "fs-extra": "^11.3.3",
+    "geo-tz": "^8.1.5",
     "jest": "^30.2.0",
     "path-browserify": "^1.0.1",
     "raw-loader": "^4.0.2",
-    "webpack": "^5.103.0",
+    "webpack": "^5.104.1",
     "webpack-cli": "^6.0.1"
   }
 }

@@ -596,18 +596,27 @@ async function calculateDistanceMatrix(codes = []) {
     }
 
     // Calculate distance matrix
-    const matrix = {};
+    const matrix = new Map();
 
     for (let i = 0; i < codes.length; i++) {
-        matrix[codes[i]] = {};
+        const row = new Map();
         for (let j = 0; j < codes.length; j++) {
             if (i === j) {
-                matrix[codes[i]][codes[j]] = 0;
+                row.set(codes[j], 0);
             } else {
                 const distance = await calculateDistance(codes[i], codes[j]);
-                matrix[codes[i]][codes[j]] = Math.round(distance);
+                row.set(codes[j], Math.round(distance));
             }
         }
+        matrix.set(codes[i], row);
+    }
+
+    // Convert nested Maps into plain objects for output compatibility
+    // Using Object.create(null) isn't strictly necessary for the output structure itself to be safe unless we are recursively processing it again later improperly,
+    // but here we just need to return the expected structure: { [code]: { [code]: number } }
+    const distancesObj = {};
+    for (const [rowCode, rowMap] of matrix) {
+        distancesObj[rowCode] = Object.fromEntries(rowMap);
     }
 
     return {
@@ -617,7 +626,7 @@ async function calculateDistanceMatrix(codes = []) {
             iata: airport.iata,
             icao: airport.icao
         })),
-        distances: matrix
+        distances: distancesObj
     };
 }
 
