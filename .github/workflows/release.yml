@@ -81,9 +81,7 @@ jobs:
       
       - name: Publish to NPM
         if: steps.check-version.outputs.should-publish == 'true'
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance
       
       - name: Extract latest changelog
         if: steps.check-version.outputs.should-publish == 'true'
