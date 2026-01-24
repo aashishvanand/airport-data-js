@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
+      - name: Security Audit
+        run: npm audit --audit-level=critical
+      
       - name: Check for duplicate airport codes
         run: npm run check:duplicates
       
