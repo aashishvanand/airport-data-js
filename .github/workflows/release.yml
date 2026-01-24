@@ -5,21 +5,20 @@ on:
       - release
   workflow_dispatch: # Allow manual triggering
 
-permissions:
-  contents: read
+permissions: read-all
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [20.x, 22.x, 24.x]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
       
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
@@ -48,12 +47,12 @@ jobs:
       id-token: write # For provenance
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
       
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
       
@@ -97,7 +96,7 @@ jobs:
       
       - name: Create GitHub Release
         if: steps.check-version.outputs.should-publish == 'true'
-        uses: actions/create-release@v1
+        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1 (latest)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

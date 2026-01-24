@@ -1,3 +1,7 @@
+# This workflow uses actions that are not certified by GitHub. They are provided
+# by a third-party and are governed by separate terms of service, privacy
+# policy, and support documentation.
+
 name: Scorecard supply-chain security
 on:
   # For Branch-Protection check. Only the default branch is supported. See
@@ -6,9 +10,9 @@ on:
   # To guarantee Maintained check is occasionally updated. See
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   schedule:
-    - cron: '25 10 * * 5'
+    - cron: '19 11 * * 1'
   push:
-    branches: [ "main", "release" ]
+    branches: [ "main" ]
 
 # Declare default permissions as read only.
 permissions: read-all
@@ -17,30 +21,33 @@ jobs:
   analysis:
     name: Scorecard analysis
     runs-on: ubuntu-latest
+    # `publish_results: true` only works when run from the default branch. conditional can be removed if disabled.
+    if: github.event.repository.default_branch == github.ref_name || github.event_name == 'pull_request'
     permissions:
       # Needed to upload the results to code-scanning dashboard.
       security-events: write
       # Needed to publish results and get a badge (see publish_results below).
       id-token: write
-      # CodeQL integration allows read-only for checks
-      contents: read
-      actions: read
+      # Uncomment the permissions below if installing in a private repository.
+      # contents: read
+      # actions: read
 
     steps:
       - name: "Checkout code"
-        uses: actions/checkout@v6
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
         with:
           persist-credentials: false
 
       - name: "Run analysis"
-        uses: ossf/scorecard-action@v2.4.3
+        uses: ossf/scorecard-action@99c09fe975337306107572b4fdf4db224cf8e2f2 # v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
           # (Optional) "write" PAT token. Uncomment the `repo_token` line below if:
-          # - you want to enable the Branch-Protection check on a *private* repository
-          # - you are wanting to enable the Best-Practices check
+          # - you want to enable the Branch-Protection check on a *public* repository, or
+          # - you are installing Scorecard on a *private* repository
           # - you have a low API rate limit
+          # To create the PAT, follow the steps in https://github.com/ossf/scorecard-action?tab=readme-ov-file#authentication-with-fine-grained-pat-optional.
           # repo_token: ${{ secrets.SCORECARD_TOKEN }}
 
           # Public repositories:
@@ -52,17 +59,21 @@ jobs:
           #     of the value entered here.
           publish_results: true
 
+          # (Optional) Uncomment file_mode if you have a .gitattributes with files marked export-ignore
+          # file_mode: git
+
       # Upload the results as artifacts (optional). Commenting out will disable uploads of run results in SARIF
       # format to the repository Actions tab.
       - name: "Upload artifact"
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: SARIF file
           path: results.sarif
           retention-days: 5
 
-      # Upload the results to GitHub's code scanning dashboard.
+      # Upload the results to GitHub's code scanning dashboard (optional).
+      # Commenting out will disable upload of results to your repo's Code Scanning dashboard
       - name: "Upload to code-scanning"
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@7e411dfa505b8ce87fc7dc5606e45c59c40156a6 # v3
         with:
           sarif_file: results.sarif
