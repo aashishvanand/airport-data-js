@@ -25,6 +25,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import ConnectingAirportsIcon from '@mui/icons-material/ConnectingAirports';
 import NearMeIcon from '@mui/icons-material/NearMe';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import RouteIcon from '@mui/icons-material/Route';
 
 import {
   getAirportByIata,
@@ -49,6 +50,7 @@ import LargestAirportsView from '../components/LargestAirportsView';
 import DistanceView from '../components/DistanceView';
 import NearbyView from '../components/NearbyView';
 import ValidationView from '../components/ValidationView';
+import MultiCityTripView from '../components/MultiCityTripView';
 
 export default function UpdatedAirportSearch() {
   const [activeTab, setActiveTab] = useState(0);
@@ -183,6 +185,7 @@ export default function UpdatedAirportSearch() {
       case 3: return <DistanceView />;
       case 4: return <NearbyView />;
       case 5: return <ValidationView />;
+      case 6: return <MultiCityTripView />;
       default: return null;
     }
   };
@@ -227,6 +230,7 @@ export default function UpdatedAirportSearch() {
               <Tab label="Distance" icon={<ConnectingAirportsIcon />} iconPosition="start" />
               <Tab label="Nearby" icon={<NearMeIcon />} iconPosition="start" />
               <Tab label="Validation" icon={<VerifiedUserIcon />} iconPosition="start" />
+              <Tab label="Multi-City" icon={<RouteIcon />} iconPosition="start" />
             </Tabs>
           </Container>
         </Box>
