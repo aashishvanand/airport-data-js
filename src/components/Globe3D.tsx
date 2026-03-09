@@ -93,10 +93,10 @@ export default function Globe3D({ airports, route }: Globe3DProps) {
             <Globe
                 ref={globeEl}
                 globeImageUrl={theme.palette.mode === 'dark'
-                    ? "//unpkg.com/three-globe/example/img/earth-dark.jpg"
-                    : "//unpkg.com/three-globe/example/img/earth-day.jpg"
+                    ? "https://unpkg.com/three-globe/example/img/earth-dark.jpg"
+                    : "https://unpkg.com/three-globe/example/img/earth-day.jpg"
                 }
-                bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+                bumpImageUrl="https://unpkg.com/three-globe/example/img/earth-topology.png"
                 backgroundColor="rgba(0,0,0,0)" // Transparent to blend with app background
                 width={dimensions.width}
                 height={dimensions.height}

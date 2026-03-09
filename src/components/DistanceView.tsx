@@ -43,7 +43,7 @@ export default function DistanceView() {
             }
         } catch (err) {
             setError('Failed to calculate distance or find airports.');
-            console.error(err);
+            if (process.env.NODE_ENV === 'development') console.error(err);
         }
     };
 

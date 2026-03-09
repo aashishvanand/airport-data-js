@@ -56,7 +56,7 @@ export default function MultiCityTripView() {
                     }
                 } catch (e) {
                     // Ignore individual fetch errors, handle later
-                    console.error(`Error fetching ${code}`, e);
+                    if (process.env.NODE_ENV === 'development') console.error(`Error fetching ${code}`, e);
                 }
 
                 if (airport && airport.latitude && airport.longitude) {
@@ -77,7 +77,7 @@ export default function MultiCityTripView() {
 
         } catch (err) {
             setError('An error occurred while processing the route.');
-            console.error(err);
+            if (process.env.NODE_ENV === 'development') console.error(err);
         } finally {
             setLoading(false);
         }

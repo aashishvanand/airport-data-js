@@ -24,7 +24,7 @@ export default function NearbyView() {
             const results = await findNearbyAirports(lat, lon, radius);
             setAirports(results || []);
         } catch (err) {
-            console.error(err);
+            if (process.env.NODE_ENV === 'development') console.error(err);
             setAirports([]);
         } finally {
             setLoading(false);
@@ -39,7 +39,7 @@ export default function NearbyView() {
                     setLon(position.coords.longitude);
                 },
                 (error) => {
-                    console.error("Error getting location", error);
+                    if (process.env.NODE_ENV === 'development') console.error("Error getting location", error);
                 }
             );
         }

@@ -93,7 +93,7 @@ export default function UpdatedAirportSearch() {
               const airportLinks = await getAirportLinks(validAirports[0].iata || validAirports[0].icao);
               setLinks(airportLinks || {});
             } catch (err) {
-              console.error('Failed to fetch links:', err);
+              if (process.env.NODE_ENV === 'development') console.error('Failed to fetch links:', err);
             }
           }
           else {
@@ -109,7 +109,7 @@ export default function UpdatedAirportSearch() {
         setError(`No airports found for ${type}: ${query}`);
       }
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV === 'development') console.error(err);
       if (err instanceof Error) {
         setError(err.message);
       } else {

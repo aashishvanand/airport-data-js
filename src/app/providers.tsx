@@ -23,17 +23,24 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
 
   useEffect(() => {
-    // Check system preference or local storage
-    const storedTheme = localStorage.getItem('theme') as PaletteMode | null
-    if (storedTheme) {
-      setMode(storedTheme)
-    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setMode('dark')
+    try {
+      const storedTheme = localStorage.getItem('theme') as PaletteMode | null
+      if (storedTheme) {
+        setMode(storedTheme)
+      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        setMode('dark')
+      }
+    } catch {
+      // localStorage may be unavailable (private browsing, storage disabled, etc.)
     }
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('theme', mode)
+    try {
+      localStorage.setItem('theme', mode)
+    } catch {
+      // localStorage may be unavailable
+    }
   }, [mode])
 
   return (

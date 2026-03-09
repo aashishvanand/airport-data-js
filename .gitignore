@@ -11,6 +11,7 @@
 
 # misc
 .DS_Store
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -31,6 +32,10 @@ yarn-error.log*
 *.sw*
 
 
-# Next.js
-/.next/
-/out/
+# Vite / vinext
+dist/
+.vinext/
+
+# Cloudflare
+.wrangler/
+.dev.vars

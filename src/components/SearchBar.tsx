@@ -35,7 +35,7 @@ export default function SearchBar({ onSearch, loading, isValid }: SearchBarProps
                     const autocompleteSuggestions = await getAutocompleteSuggestions(query);
                     setSuggestions(autocompleteSuggestions || []);
                 } catch (err) {
-                    console.error('Failed to fetch suggestions:', err);
+                    if (process.env.NODE_ENV === 'development') console.error('Failed to fetch suggestions:', err);
                     setSuggestions([]);
                 }
             } else {

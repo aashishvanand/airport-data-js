@@ -24,7 +24,7 @@ export default function LargestAirportsView() {
                 const result = await getLargestAirportsByContinent(continent, limit, sortBy);
                 setAirports(result);
             } catch (err) {
-                console.error(err);
+                if (process.env.NODE_ENV === 'development') console.error(err);
                 setAirports([]);
             } finally {
                 setLoading(false);
