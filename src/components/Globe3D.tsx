@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useTheme } from '@mui/material/styles';
 import { Airport } from '../types';
@@ -19,37 +19,31 @@ interface Globe3DProps {
 export default function Globe3D({ airports, route }: Globe3DProps) {
     const theme = useTheme();
     const globeEl = useRef<any>(null);
-    const [pointsData, setPointsData] = useState<any[]>([]);
-    const [arcsData, setArcsData] = useState<any[]>([]);
 
-    useEffect(() => {
-        // Prepare data for the globe
-        const points = airports.map(a => ({
-            lat: Number(a.latitude),
-            lng: Number(a.longitude),
-            name: a.airport,
-            code: a.iata || a.icao,
-            color: theme.palette.mode === 'dark' ? '#60a5fa' : '#2563eb',
-            radius: 0.5
-        }));
-        setPointsData(points);
+    // Memoize derived data to avoid recomputation unless airports or theme actually change
+    const pointsData = useMemo(() => airports.map(a => ({
+        lat: Number(a.latitude),
+        lng: Number(a.longitude),
+        name: a.airport,
+        code: a.iata || a.icao,
+        color: theme.palette.mode === 'dark' ? '#60a5fa' : '#2563eb',
+        radius: 0.5
+    })), [airports, theme.palette.mode]);
 
-        if (airports.length > 1) {
-            const arcs = [];
-            for (let i = 0; i < airports.length - 1; i++) {
-                arcs.push({
-                    startLat: Number(airports[i].latitude),
-                    startLng: Number(airports[i].longitude),
-                    endLat: Number(airports[i + 1].latitude),
-                    endLng: Number(airports[i + 1].longitude),
-                    color: theme.palette.primary.main
-                });
-            }
-            setArcsData(arcs);
-        } else {
-            setArcsData([]);
+    const arcsData = useMemo(() => {
+        if (airports.length <= 1) return [];
+        const arcs = [];
+        for (let i = 0; i < airports.length - 1; i++) {
+            arcs.push({
+                startLat: Number(airports[i].latitude),
+                startLng: Number(airports[i].longitude),
+                endLat: Number(airports[i + 1].latitude),
+                endLng: Number(airports[i + 1].longitude),
+                color: theme.palette.primary.main
+            });
         }
-    }, [airports, theme, route]);
+        return arcs;
+    }, [airports, theme.palette.primary.main]);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
@@ -68,22 +62,31 @@ export default function Globe3D({ airports, route }: Globe3DProps) {
         updateDimensions(); // Initial measurement
 
         // Slight delay to ensure parent container has rendered valid width
-        setTimeout(updateDimensions, 100);
+        const timerId = setTimeout(updateDimensions, 100);
 
-        return () => window.removeEventListener('resize', updateDimensions);
+        return () => {
+            window.removeEventListener('resize', updateDimensions);
+            clearTimeout(timerId);
+        };
     }, []);
 
     useEffect(() => {
         // Auto-rotate or position
         if (globeEl.current) {
-            globeEl.current.controls().autoRotate = true;
-            globeEl.current.controls().autoRotateSpeed = 0.5;
+            const controls = globeEl.current.controls();
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.5;
 
             // If we have points, try to center on the first one or the whole route
             if (pointsData.length > 0) {
                 const first = pointsData[0];
                 globeEl.current.pointOfView({ lat: first.lat, lng: first.lng, altitude: 2.0 }, 1000);
             }
+
+            return () => {
+                // Stop auto-rotation on unmount to prevent leaked animation frames
+                controls.autoRotate = false;
+            };
         }
     }, [pointsData]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Paper,
     Tabs,
@@ -23,31 +23,37 @@ interface SearchBarProps {
     isValid: (type: SearchType, query: string) => boolean;
 }
 
-export default function SearchBar({ onSearch, loading, isValid }: SearchBarProps) {
+export default React.memo(function SearchBar({ onSearch, loading, isValid }: SearchBarProps) {
     const [searchType, setSearchType] = useState<SearchType>('iata');
     const [query, setQuery] = useState('');
     const [suggestions, setSuggestions] = useState<Airport[]>([]);
 
+    // Debounced autocomplete with stale-request cancellation
     useEffect(() => {
+        let active = true;
+
         const fetchSuggestions = async () => {
             if (query.length >= 2 && searchType === 'name') {
                 try {
                     const autocompleteSuggestions = await getAutocompleteSuggestions(query);
-                    setSuggestions(autocompleteSuggestions || []);
+                    if (active) setSuggestions(autocompleteSuggestions || []);
                 } catch (err) {
                     if (process.env.NODE_ENV === 'development') console.error('Failed to fetch suggestions:', err);
-                    setSuggestions([]);
+                    if (active) setSuggestions([]);
                 }
             } else {
-                setSuggestions([]);
+                if (active) setSuggestions([]);
             }
         };
 
         const timeoutId = setTimeout(fetchSuggestions, 300);
-        return () => clearTimeout(timeoutId);
+        return () => {
+            active = false;
+            clearTimeout(timeoutId);
+        };
     }, [query, searchType]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.toUpperCase();
         const maxLengths: Record<string, number> = { iata: 3, icao: 4, country: 2, continent: 2 };
         if (maxLengths[searchType]) {
@@ -55,7 +61,7 @@ export default function SearchBar({ onSearch, loading, isValid }: SearchBarProps
         } else {
             setQuery(e.target.value);
         }
-    };
+    }, [searchType]);
 
     const getHelperText = (type: SearchType) => {
         switch (type) {
@@ -67,17 +73,17 @@ export default function SearchBar({ onSearch, loading, isValid }: SearchBarProps
         }
     };
 
-    const handleSearchSubmit = () => {
+    const handleSearchSubmit = useCallback(() => {
         if (isValid(searchType, query)) {
             onSearch(searchType, query);
         }
-    };
+    }, [isValid, searchType, query, onSearch]);
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && isValid(searchType, query)) {
             onSearch(searchType, query);
         }
-    }
+    }, [isValid, searchType, query, onSearch]);
 
     return (
         <Paper sx={{
@@ -204,4 +210,4 @@ export default function SearchBar({ onSearch, loading, isValid }: SearchBarProps
             </Box>
         </Paper>
     );
-}
+});

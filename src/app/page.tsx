@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { useTheme } from '@mui/material/styles';
 import {
   AppBar,
@@ -14,7 +14,8 @@ import {
   Tabs,
   Tab,
   Paper,
-  Fade
+  Fade,
+  CircularProgress
 } from '@mui/material';
 import FlightIcon from '@mui/icons-material/Flight';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -26,6 +27,7 @@ import ConnectingAirportsIcon from '@mui/icons-material/ConnectingAirports';
 import NearMeIcon from '@mui/icons-material/NearMe';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import RouteIcon from '@mui/icons-material/Route';
+import dynamic from 'next/dynamic';
 
 import {
   getAirportByIata,
@@ -41,16 +43,51 @@ import {
 import { useColorMode } from './providers';
 import { Airport, SearchType } from '../types';
 
-// Component Imports
+// Eagerly loaded components (needed on first tab)
 import SearchBar from '../components/SearchBar';
 import MapComponent from '../components/Map';
 import AirportCard from '../components/AirportCard';
-import StatsView from '../components/StatsView';
-import LargestAirportsView from '../components/LargestAirportsView';
-import DistanceView from '../components/DistanceView';
-import NearbyView from '../components/NearbyView';
-import ValidationView from '../components/ValidationView';
-import MultiCityTripView from '../components/MultiCityTripView';
+
+// Lazy-loaded tab components (only loaded when the user switches to them)
+const StatsView = dynamic(() => import('../components/StatsView'), {
+  loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+});
+const LargestAirportsView = dynamic(() => import('../components/LargestAirportsView'), {
+  loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+});
+const DistanceView = dynamic(() => import('../components/DistanceView'), {
+  loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+});
+const NearbyView = dynamic(() => import('../components/NearbyView'), {
+  loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+});
+const ValidationView = dynamic(() => import('../components/ValidationView'), {
+  loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+});
+const MultiCityTripView = dynamic(() => import('../components/MultiCityTripView'), {
+  loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+});
+
+// Module-level constant — stable references, never recreated
+const searchFunctions: Record<string, (query: string) => Promise<Airport[]>> = {
+  iata: getAirportByIata,
+  icao: getAirportByIcao,
+  name: searchByName,
+  country: getAirportByCountryCode,
+  continent: getAirportByContinent,
+  type: getAirportsByType,
+  timezone: getAirportsByTimezone
+};
+
+const validationPatterns: Record<string, RegExp> = {
+  iata: /^[A-Z]{3}$/,
+  icao: /^[A-Z]{4}$/,
+  name: /^.{2,}$/,
+  country: /^[A-Z]{2}$/,
+  continent: /^[A-Z]{2}$/,
+  type: /^.+$/,
+  timezone: /^.+$/
+};
 
 export default function UpdatedAirportSearch() {
   const [activeTab, setActiveTab] = useState(0);
@@ -62,48 +99,57 @@ export default function UpdatedAirportSearch() {
   const theme = useTheme();
   const colorMode = useColorMode();
 
-  const handleSearch = async (type: SearchType, query: string) => {
+  // Caches to avoid redundant network requests
+  const searchCache = useRef(new Map<string, Airport[]>());
+  const linksCache = useRef(new Map<string, Record<string, string>>());
+
+  const handleSearch = useCallback(async (type: SearchType, query: string) => {
     setLoading(true);
     setError('');
 
     try {
-      const searchFunctions: Record<string, (query: string) => Promise<Airport[]>> = {
-        iata: getAirportByIata,
-        icao: getAirportByIcao,
-        name: searchByName,
-        country: getAirportByCountryCode,
-        continent: getAirportByContinent,
-        type: getAirportsByType,
-        timezone: getAirportsByTimezone
-      };
+      // Check search cache first
+      const cacheKey = `${type}:${query}`;
+      let validAirports: Airport[];
 
-      const airportsResponse = await searchFunctions[type](query);
-      const airports = Array.isArray(airportsResponse) ? airportsResponse : [airportsResponse].filter(Boolean);
+      if (searchCache.current.has(cacheKey)) {
+        validAirports = searchCache.current.get(cacheKey)!;
+      } else {
+        const airportsResponse = await searchFunctions[type](query);
+        const airports = Array.isArray(airportsResponse) ? airportsResponse : [airportsResponse].filter(Boolean);
 
-      if (airports && airports.length > 0) {
-        // Filter out bad data
-        const validAirports = airports.filter(a => a.airport);
+        if (airports && airports.length > 0) {
+          validAirports = airports.filter(a => a.airport);
+          if (validAirports.length > 0) {
+            searchCache.current.set(cacheKey, validAirports);
+          }
+        } else {
+          validAirports = [];
+        }
+      }
 
-        if (validAirports.length > 0) {
-          setResults(validAirports);
+      if (validAirports.length > 0) {
+        setResults(validAirports);
 
-          // Get external links for the first airport if single result
-          if (validAirports.length === 1 && (validAirports[0].iata || validAirports[0].icao)) {
+        // Get external links for the first airport if single result
+        if (validAirports.length === 1 && (validAirports[0].iata || validAirports[0].icao)) {
+          const linkKey = validAirports[0].iata || validAirports[0].icao;
+          if (linksCache.current.has(linkKey)) {
+            setLinks(linksCache.current.get(linkKey)!);
+          } else {
             try {
-              const airportLinks = await getAirportLinks(validAirports[0].iata || validAirports[0].icao);
-              setLinks(airportLinks || {});
+              const airportLinks = await getAirportLinks(linkKey);
+              const resolved = airportLinks || {};
+              linksCache.current.set(linkKey, resolved);
+              setLinks(resolved);
             } catch (err) {
               if (process.env.NODE_ENV === 'development') console.error('Failed to fetch links:', err);
             }
           }
-          else {
-            setLinks({});
-          }
-          setError('');
         } else {
-          setResults([]);
-          setError('No valid airport data found.');
+          setLinks({});
         }
+        setError('');
       } else {
         setResults([]);
         setError(`No airports found for ${type}: ${query}`);
@@ -119,21 +165,30 @@ export default function UpdatedAirportSearch() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const isValidInput = (type: SearchType, query: string): boolean => {
+  const isValidInput = useCallback((type: SearchType, query: string): boolean => {
     if (!query) return false;
-    const patterns: Record<string, RegExp> = {
-      iata: /^[A-Z]{3}$/,
-      icao: /^[A-Z]{4}$/,
-      name: /^.{2,}$/,
-      country: /^[A-Z]{2}$/,
-      continent: /^[A-Z]{2}$/,
-      type: /^.+$/,
-      timezone: /^.+$/
-    };
-    return patterns[type]?.test(query) || false;
-  };
+    return validationPatterns[type]?.test(query) || false;
+  }, []);
+
+  const handleTabChange = useCallback((_: React.SyntheticEvent, v: number) => {
+    setActiveTab(v);
+  }, []);
+
+  // Memoized derived values to avoid recomputation on every render
+  const hasCoordinates = useMemo(() => results.some(a => a.latitude && a.longitude), [results]);
+
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (results.length > 0 && results[0].latitude && results[0].longitude) {
+      return [Number(results[0].latitude), Number(results[0].longitude)];
+    }
+    return [20, 0];
+  }, [results]);
+
+  const mapZoom = useMemo(() => results.length === 1 ? 12 : 3, [results.length]);
+
+  const displayedResults = useMemo(() => results.slice(0, 20), [results]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -148,11 +203,11 @@ export default function UpdatedAirportSearch() {
               {results.length > 0 && (
                 <Box sx={{ mb: 4 }}>
                   {/* Show map for first few results to avoid clutter */}
-                  {results.some(a => a.latitude && a.longitude) && (
+                  {hasCoordinates && (
                     <Box sx={{ mb: 4 }}>
                       <MapComponent
-                        center={[Number(results[0].latitude), Number(results[0].longitude)]}
-                        zoom={results.length === 1 ? 12 : 3}
+                        center={mapCenter}
+                        zoom={mapZoom}
                         markers={results}
                       />
                     </Box>
@@ -163,7 +218,7 @@ export default function UpdatedAirportSearch() {
                   </Typography>
 
                   <Grid container spacing={3}>
-                    {results.slice(0, 20).map((airport, index) => (
+                    {displayedResults.map((airport, index) => (
                       <Grid size={{ xs: 12, md: 6, lg: 4 }} key={`${airport.iata}-${airport.icao}-${index}`}>
                         <AirportCard
                           airport={airport}
@@ -218,7 +273,7 @@ export default function UpdatedAirportSearch() {
           <Container maxWidth="xl">
             <Tabs
               value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
+              onChange={handleTabChange}
               variant="scrollable"
               scrollButtons="auto"
               textColor="primary"

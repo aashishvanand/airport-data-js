@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Paper, Typography, Box, TextField, Button, Grid, Slider, Alert } from '@mui/material';
 import NearMeIcon from '@mui/icons-material/NearMe';
 import { findNearbyAirports } from 'airport-data-js';
@@ -16,34 +16,45 @@ export default function NearbyView() {
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
 
+    // Track mounted state to prevent state updates after unmount
+    const mountedRef = useRef(true);
+    useEffect(() => {
+        return () => { mountedRef.current = false; };
+    }, []);
+
     const handleSearch = async () => {
         setLoading(true);
         setSearched(true);
         try {
             // @ts-ignore - Assuming signature matches
             const results = await findNearbyAirports(lat, lon, radius);
-            setAirports(results || []);
+            if (mountedRef.current) setAirports(results || []);
         } catch (err) {
             if (process.env.NODE_ENV === 'development') console.error(err);
-            setAirports([]);
+            if (mountedRef.current) setAirports([]);
         } finally {
-            setLoading(false);
+            if (mountedRef.current) setLoading(false);
         }
     };
 
-    const getUserLocation = () => {
+    const getUserLocation = useCallback(() => {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    setLat(position.coords.latitude);
-                    setLon(position.coords.longitude);
+                    if (mountedRef.current) {
+                        setLat(position.coords.latitude);
+                        setLon(position.coords.longitude);
+                    }
                 },
                 (error) => {
                     if (process.env.NODE_ENV === 'development') console.error("Error getting location", error);
                 }
             );
         }
-    };
+    }, []);
+
+    // Memoize map center to avoid creating a new array on every render
+    const center = useMemo<[number, number]>(() => [lat, lon], [lat, lon]);
 
     return (
         <Box>
@@ -96,7 +107,7 @@ export default function NearbyView() {
             {searched && airports.length > 0 && (
                 <Box sx={{ mb: 4 }}>
                     <MapComponent
-                        center={[lat, lon]}
+                        center={center}
                         zoom={9}
                         markers={airports}
                     />

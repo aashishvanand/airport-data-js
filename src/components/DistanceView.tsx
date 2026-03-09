@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Paper, Typography, Box, TextField, Button, Grid, Alert } from '@mui/material';
 import MapIcon from '@mui/icons-material/Map';
 import ConnectingAirportsIcon from '@mui/icons-material/ConnectingAirports';
@@ -47,9 +47,25 @@ export default function DistanceView() {
         }
     };
 
-    const mapCenter: [number, number] = airport1 && airport2
-        ? [(Number(airport1.latitude) + Number(airport2.latitude)) / 2, (Number(airport1.longitude) + Number(airport2.longitude)) / 2]
-        : [20, 0];
+    // Memoize map props to avoid creating new arrays on every render
+    const mapCenter = useMemo<[number, number]>(() =>
+        airport1 && airport2
+            ? [(Number(airport1.latitude) + Number(airport2.latitude)) / 2, (Number(airport1.longitude) + Number(airport2.longitude)) / 2]
+            : [20, 0],
+        [airport1, airport2]
+    );
+
+    const mapMarkers = useMemo(() =>
+        airport1 && airport2 ? [airport1, airport2] : [],
+        [airport1, airport2]
+    );
+
+    const mapRoute = useMemo<[number, number][] | undefined>(() =>
+        airport1 && airport2
+            ? [[Number(airport1.latitude), Number(airport1.longitude)], [Number(airport2.latitude), Number(airport2.longitude)]]
+            : undefined,
+        [airport1, airport2]
+    );
 
     return (
         <Box>
@@ -99,8 +115,8 @@ export default function DistanceView() {
                 <MapComponent
                     center={mapCenter}
                     zoom={2}
-                    markers={[airport1, airport2]}
-                    route={[[Number(airport1.latitude), Number(airport1.longitude)], [Number(airport2.latitude), Number(airport2.longitude)]]}
+                    markers={mapMarkers}
+                    route={mapRoute}
                 />
             )}
         </Box>

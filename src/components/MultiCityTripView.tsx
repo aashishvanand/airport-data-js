@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Paper, Typography, Box, TextField, Button, Grid, Alert } from '@mui/material';
 import RouteIcon from '@mui/icons-material/Route';
 import FlightIcon from '@mui/icons-material/Flight';
@@ -10,7 +10,13 @@ import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { getAirportByIata, getAirportByIcao } from 'airport-data-js';
 import { Airport } from '../types';
 import MapComponent from './Map';
-import Globe3D from './Globe3D';
+import dynamic from 'next/dynamic';
+
+// Lazy-load Globe3D — user may never toggle to 3D view
+const Globe3D = dynamic(() => import('./Globe3D'), {
+    ssr: false,
+    loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8, height: '70vh', alignItems: 'center' }}>Loading Globe...</Box>
+});
 
 export default function MultiCityTripView() {
     const [routeString, setRouteString] = useState('');
@@ -39,14 +45,12 @@ export default function MultiCityTripView() {
         }
 
         try {
-            const fetchedAirports: Airport[] = [];
             const missingCodes: string[] = [];
 
-            for (const code of codes) {
-                let airport: Airport | null = null;
-
-                // Try IATA/ICAO based on length
+            // Fetch all airports in parallel instead of sequentially
+            const fetchPromises = codes.map(async (code) => {
                 try {
+                    let airport: Airport | null = null;
                     if (code.length === 3) {
                         const res = await getAirportByIata(code);
                         airport = Array.isArray(res) ? res[0] : res;
@@ -54,15 +58,24 @@ export default function MultiCityTripView() {
                         const res = await getAirportByIcao(code);
                         airport = Array.isArray(res) ? res[0] : res;
                     }
+                    return { code, airport };
                 } catch (e) {
-                    // Ignore individual fetch errors, handle later
                     if (process.env.NODE_ENV === 'development') console.error(`Error fetching ${code}`, e);
+                    return { code, airport: null };
                 }
+            });
 
-                if (airport && airport.latitude && airport.longitude) {
-                    fetchedAirports.push(airport);
-                } else {
-                    missingCodes.push(code);
+            const results = await Promise.allSettled(fetchPromises);
+            const fetchedAirports: Airport[] = [];
+
+            for (const result of results) {
+                if (result.status === 'fulfilled') {
+                    const { code, airport } = result.value;
+                    if (airport && airport.latitude && airport.longitude) {
+                        fetchedAirports.push(airport);
+                    } else {
+                        missingCodes.push(code);
+                    }
                 }
             }
 
@@ -83,10 +96,13 @@ export default function MultiCityTripView() {
         }
     };
 
-    const routeCoordinates: [number, number][] = airports.map(a => [Number(a.latitude), Number(a.longitude)]);
+    // Memoize expensive computations to avoid recalculation on every render
+    const routeCoordinates = useMemo<[number, number][]>(
+        () => airports.map(a => [Number(a.latitude), Number(a.longitude)]),
+        [airports]
+    );
 
-    // Calculate center
-    const calculateCenter = (): [number, number] => {
+    const center = useMemo<[number, number]>(() => {
         if (routeCoordinates.length === 0) return [20, 0];
         const lats = routeCoordinates.map(c => c[0]);
         const lngs = routeCoordinates.map(c => c[1]);
@@ -95,7 +111,11 @@ export default function MultiCityTripView() {
         const minLng = Math.min(...lngs);
         const maxLng = Math.max(...lngs);
         return [(minLat + maxLat) / 2, (minLng + maxLng) / 2];
-    };
+    }, [routeCoordinates]);
+
+    const handleViewModeChange = useCallback((_: React.MouseEvent<HTMLElement>, newMode: '2d' | '3d' | null) => {
+        if (newMode) setViewMode(newMode);
+    }, []);
 
     return (
         <Box>
@@ -137,7 +157,7 @@ export default function MultiCityTripView() {
                         <ToggleButtonGroup
                             value={viewMode}
                             exclusive
-                            onChange={(_, newMode) => newMode && setViewMode(newMode)}
+                            onChange={handleViewModeChange}
                             aria-label="view mode"
                         >
                             <ToggleButton value="2d" aria-label="2d map">
@@ -154,7 +174,7 @@ export default function MultiCityTripView() {
             {airports.length > 0 && (
                 viewMode === '2d' ? (
                     <MapComponent
-                        center={calculateCenter()}
+                        center={center}
                         zoom={2}
                         markers={airports}
                         route={routeCoordinates}

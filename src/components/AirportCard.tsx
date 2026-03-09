@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Card, CardContent, Typography, Box, Chip, Tooltip } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PublicIcon from '@mui/icons-material/Public';
@@ -17,7 +18,7 @@ interface AirportCardProps {
     extraLinks?: Record<string, string>;
 }
 
-export default function AirportCard({ airport, extraLinks }: AirportCardProps) {
+export default React.memo(function AirportCard({ airport, extraLinks }: AirportCardProps) {
     return (
         <Card sx={{
             height: '100%',
@@ -128,4 +129,4 @@ export default function AirportCard({ airport, extraLinks }: AirportCardProps) {
             </CardContent>
         </Card>
     );
-}
+});

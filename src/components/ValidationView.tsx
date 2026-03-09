@@ -13,38 +13,52 @@ export default function ValidationView() {
     const [iataStatus, setIataStatus] = useState<boolean | null>(null);
     const [icaoStatus, setIcaoStatus] = useState<boolean | null>(null);
 
+    // Debounced IATA validation with stale-request guard
     React.useEffect(() => {
-        const checkIata = async () => {
-            if (iataInput.length === 3) {
-                try {
-                    // @ts-ignore
-                    const result = await validateIataCode(iataInput.toUpperCase());
-                    setIataStatus(result);
-                } catch (e) {
-                    setIataStatus(false);
-                }
-            } else {
-                setIataStatus(null);
+        if (iataInput.length !== 3) {
+            setIataStatus(null);
+            return;
+        }
+
+        let cancelled = false;
+        const timeoutId = setTimeout(async () => {
+            try {
+                // @ts-ignore
+                const result = await validateIataCode(iataInput.toUpperCase());
+                if (!cancelled) setIataStatus(result);
+            } catch (e) {
+                if (!cancelled) setIataStatus(false);
             }
+        }, 300);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeoutId);
         };
-        checkIata();
     }, [iataInput]);
 
+    // Debounced ICAO validation with stale-request guard
     React.useEffect(() => {
-        const checkIcao = async () => {
-            if (icaoInput.length === 4) {
-                try {
-                    // @ts-ignore
-                    const result = await validateIcaoCode(icaoInput.toUpperCase());
-                    setIcaoStatus(result);
-                } catch (e) {
-                    setIcaoStatus(false);
-                }
-            } else {
-                setIcaoStatus(null);
+        if (icaoInput.length !== 4) {
+            setIcaoStatus(null);
+            return;
+        }
+
+        let cancelled = false;
+        const timeoutId = setTimeout(async () => {
+            try {
+                // @ts-ignore
+                const result = await validateIcaoCode(icaoInput.toUpperCase());
+                if (!cancelled) setIcaoStatus(result);
+            } catch (e) {
+                if (!cancelled) setIcaoStatus(false);
             }
+        }, 300);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timeoutId);
         };
-        checkIcao();
     }, [icaoInput]);
 
     return (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Box, useTheme, Paper } from '@mui/material';
 import { Airport } from '../types';
 import dynamic from 'next/dynamic';
@@ -28,6 +28,23 @@ const Polyline = dynamic(
     { ssr: false }
 );
 
+// Dynamic import for useMap hook (used for programmatic view changes)
+const MapViewUpdater = dynamic(
+    () => import('react-leaflet').then((mod) => {
+        // Create a small component that uses useMap to update view
+        const { useMap } = mod;
+        function ViewUpdater({ center, zoom }: { center: [number, number]; zoom: number }) {
+            const map = useMap();
+            useEffect(() => {
+                map.setView(center, zoom);
+            }, [center, zoom, map]);
+            return null;
+        }
+        return ViewUpdater;
+    }),
+    { ssr: false }
+);
+
 interface MapComponentProps {
     center: [number, number];
     zoom: number;
@@ -50,13 +67,19 @@ const createFlightIcon = (isDarkMode: boolean) => {
     });
 }
 
-export default function MapComponent({ center, zoom, markers, route }: MapComponentProps) {
+export default React.memo(function MapComponent({ center, zoom, markers, route }: MapComponentProps) {
     const theme = useTheme();
     const [isMounted, setIsMounted] = useState(false);
 
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    // Memoize the flight icon so it's only recreated when theme mode changes, not per marker per render
+    const flightIcon = useMemo(
+        () => createFlightIcon(theme.palette.mode === 'dark'),
+        [theme.palette.mode]
+    );
 
     if (!isMounted) return <Box sx={{ height: 400, bgcolor: 'background.paper', borderRadius: 4 }} />;
 
@@ -65,11 +88,13 @@ export default function MapComponent({ center, zoom, markers, route }: MapCompon
             <Box sx={{ height: 450, width: '100%', borderRadius: 3, overflow: 'hidden' }}>
                 {/* @ts-ignore - React Leaflet types can be tricky with dynamic imports */}
                 <MapContainer
-                    key={`${center[0]}-${center[1]}-${zoom}`} // Force re-render on center change
                     center={center}
                     zoom={zoom}
                     style={{ height: '100%', width: '100%' }}
                 >
+                    {/* Programmatically update view instead of destroying/recreating MapContainer via key */}
+                    {/* @ts-ignore */}
+                    <MapViewUpdater center={center} zoom={zoom} />
                     {/* @ts-ignore */}
                     <TileLayer
                         url={theme.palette.mode === 'dark'
@@ -84,7 +109,7 @@ export default function MapComponent({ center, zoom, markers, route }: MapCompon
                             <Marker
                                 key={`${airport.iata}-${airport.icao}-${index}`}
                                 position={[Number(airport.latitude), Number(airport.longitude)]}
-                                icon={createFlightIcon(theme.palette.mode === 'dark')}
+                                icon={flightIcon}
                             >
                                 {/* @ts-ignore */}
                                 <Popup>
@@ -112,4 +137,4 @@ export default function MapComponent({ center, zoom, markers, route }: MapCompon
             </Box>
         </Paper>
     );
-}
+});

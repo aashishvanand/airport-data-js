@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Paper, Typography, Box, Grid, FormControl, InputLabel, Select, MenuItem,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip
@@ -16,21 +16,38 @@ export default function LargestAirportsView() {
     const [airports, setAirports] = useState<Airport[]>([]);
     const [loading, setLoading] = useState(false);
 
+    // Cache results to avoid refetching when toggling between previously-viewed combinations
+    const cache = useRef(new Map<string, Airport[]>());
+
     useEffect(() => {
+        const cacheKey = `${continent}-${sortBy}-${limit}`;
+
+        // Return cached results if available
+        if (cache.current.has(cacheKey)) {
+            setAirports(cache.current.get(cacheKey)!);
+            return;
+        }
+
+        let cancelled = false;
         const fetchAirports = async () => {
             setLoading(true);
             try {
                 // @ts-ignore - Assuming implementation matches signature
                 const result = await getLargestAirportsByContinent(continent, limit, sortBy);
-                setAirports(result);
+                if (!cancelled) {
+                    cache.current.set(cacheKey, result);
+                    setAirports(result);
+                }
             } catch (err) {
                 if (process.env.NODE_ENV === 'development') console.error(err);
-                setAirports([]);
+                if (!cancelled) setAirports([]);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
         fetchAirports();
+
+        return () => { cancelled = true; };
     }, [continent, sortBy, limit]);
 
     return (

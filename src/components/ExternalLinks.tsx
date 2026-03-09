@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Box, Chip, Typography } from '@mui/material';
 import { Airport } from '../types';
 import LanguageIcon from '@mui/icons-material/Language';
@@ -12,15 +13,16 @@ interface ExternalLinksProps {
     extraLinks?: Record<string, string>;
 }
 
-export default function ExternalLinks({ airport, extraLinks = {} }: ExternalLinksProps) {
-    const linkTypes = [
-        { key: 'website', label: 'Website', icon: <LanguageIcon fontSize="small" /> },
-        { key: 'wikipedia', label: 'Wikipedia', icon: <MenuBookIcon fontSize="small" /> },
-        { key: 'flightradar24_url', label: 'FlightRadar24', icon: <RadarIcon fontSize="small" /> },
-        { key: 'radarbox_url', label: 'RadarBox', icon: <RadarIcon fontSize="small" /> },
-        { key: 'flightaware_url', label: 'FlightAware', icon: <FlightIcon fontSize="small" /> }
-    ];
+// Hoisted to module scope — stable reference, never recreated
+const linkTypes = [
+    { key: 'website', label: 'Website', icon: <LanguageIcon fontSize="small" /> },
+    { key: 'wikipedia', label: 'Wikipedia', icon: <MenuBookIcon fontSize="small" /> },
+    { key: 'flightradar24_url', label: 'FlightRadar24', icon: <RadarIcon fontSize="small" /> },
+    { key: 'radarbox_url', label: 'RadarBox', icon: <RadarIcon fontSize="small" /> },
+    { key: 'flightaware_url', label: 'FlightAware', icon: <FlightIcon fontSize="small" /> }
+];
 
+export default React.memo(function ExternalLinks({ airport, extraLinks = {} }: ExternalLinksProps) {
     const hasLinks = linkTypes.some(({ key }) => airport[key as keyof Airport] || extraLinks[key.replace('_url', '')]);
 
     if (!hasLinks) return null;
@@ -60,4 +62,4 @@ export default function ExternalLinks({ airport, extraLinks = {} }: ExternalLink
             </Box>
         </Box>
     );
-}
+});
