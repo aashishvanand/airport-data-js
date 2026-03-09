@@ -5,8 +5,15 @@ import { Paper, Typography, Box, TextField, Button, Grid, Slider, Alert } from '
 import NearMeIcon from '@mui/icons-material/NearMe';
 import { findNearbyAirports } from 'airport-data-js';
 import { Airport } from '../types';
-import MapComponent from './Map';
+import dynamic from 'next/dynamic';
 import AirportCard from './AirportCard';
+
+// Map must be dynamically imported with ssr:false because leaflet references
+// `window` at module evaluation time, which crashes in Cloudflare Workers.
+const MapComponent = dynamic(() => import('./Map'), {
+    ssr: false,
+    loading: () => <Box sx={{ height: 400, bgcolor: 'background.paper', borderRadius: 4 }} />
+});
 
 export default function NearbyView() {
     const [lat, setLat] = useState<number>(1.3521); // Singapore

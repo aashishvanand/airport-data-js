@@ -9,8 +9,14 @@ import MapIcon from '@mui/icons-material/Map';
 import { ToggleButton, ToggleButtonGroup } from '@mui/material';
 import { getAirportByIata, getAirportByIcao } from 'airport-data-js';
 import { Airport } from '../types';
-import MapComponent from './Map';
 import dynamic from 'next/dynamic';
+
+// Map must be dynamically imported with ssr:false because leaflet references
+// `window` at module evaluation time, which crashes in Cloudflare Workers.
+const MapComponent = dynamic(() => import('./Map'), {
+    ssr: false,
+    loading: () => <Box sx={{ height: 400, bgcolor: 'background.paper', borderRadius: 4 }} />
+});
 
 // Lazy-load Globe3D — user may never toggle to 3D view
 const Globe3D = dynamic(() => import('./Globe3D'), {

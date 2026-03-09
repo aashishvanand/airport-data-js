@@ -45,8 +45,14 @@ import { Airport, SearchType } from '../types';
 
 // Eagerly loaded components (needed on first tab)
 import SearchBar from '../components/SearchBar';
-import MapComponent from '../components/Map';
 import AirportCard from '../components/AirportCard';
+
+// Map must be dynamically imported with ssr:false because leaflet references
+// `window` at module evaluation time, which crashes in Cloudflare Workers.
+const MapComponent = dynamic(() => import('../components/Map'), {
+  ssr: false,
+  loading: () => <Box sx={{ height: 400, bgcolor: 'background.paper', borderRadius: 4 }} />
+});
 
 // Lazy-loaded tab components (only loaded when the user switches to them)
 const StatsView = dynamic(() => import('../components/StatsView'), {

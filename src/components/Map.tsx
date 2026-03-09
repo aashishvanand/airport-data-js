@@ -4,7 +4,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Box, useTheme, Paper } from '@mui/material';
 import { Airport } from '../types';
 import dynamic from 'next/dynamic';
-import 'leaflet/dist/leaflet.css';
 
 // Dynamic import for Leaflet components with explicit typing
 const MapContainer = dynamic(
@@ -52,11 +51,9 @@ interface MapComponentProps {
     route?: [number, number][]; // Array of coordinates for polyline
 }
 
-const createFlightIcon = (isDarkMode: boolean) => {
+const createFlightIcon = async (isDarkMode: boolean) => {
     if (typeof window === 'undefined') return null;
-    // We need to require leaflet on client side only
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const L = require('leaflet');
+    const L = await import('leaflet');
 
     return new L.DivIcon({
         html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${isDarkMode ? '#60a5fa' : '#2563eb'}" width="32px" height="32px" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.3));"><path d="M0 0h24v24H0z" fill="none"/><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>`,
@@ -70,16 +67,23 @@ const createFlightIcon = (isDarkMode: boolean) => {
 export default React.memo(function MapComponent({ center, zoom, markers, route }: MapComponentProps) {
     const theme = useTheme();
     const [isMounted, setIsMounted] = useState(false);
+    const [flightIcon, setFlightIcon] = useState<any>(null);
 
     useEffect(() => {
+        // Load leaflet CSS client-side only
+        import('leaflet/dist/leaflet.css');
         setIsMounted(true);
     }, []);
 
-    // Memoize the flight icon so it's only recreated when theme mode changes, not per marker per render
-    const flightIcon = useMemo(
-        () => createFlightIcon(theme.palette.mode === 'dark'),
-        [theme.palette.mode]
-    );
+    // Load the flight icon asynchronously (leaflet can only be imported client-side)
+    useEffect(() => {
+        if (!isMounted) return;
+        let cancelled = false;
+        createFlightIcon(theme.palette.mode === 'dark').then((icon) => {
+            if (!cancelled) setFlightIcon(icon);
+        });
+        return () => { cancelled = true; };
+    }, [isMounted, theme.palette.mode]);
 
     if (!isMounted) return <Box sx={{ height: 400, bgcolor: 'background.paper', borderRadius: 4 }} />;
 
