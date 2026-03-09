@@ -60,6 +60,26 @@ function getIcaoIndex() {
 }
 
 /**
+ * Returns a shallow copy of an airport object to prevent mutation of cached data.
+ * @private
+ * @param {object} airport - The airport object to copy.
+ * @returns {object} A shallow copy of the airport object.
+ */
+function copyAirport(airport) {
+    return { ...airport };
+}
+
+/**
+ * Returns shallow copies of an array of airport objects.
+ * @private
+ * @param {Array<object>} airports - The airport objects to copy.
+ * @returns {Array<object>} An array of shallow copies.
+ */
+function copyAirports(airports) {
+    return airports.map(a => ({ ...a }));
+}
+
+/**
  * Validates a string against a regular expression and throws an error if it doesn't match.
  * @private
  * @param {string} data - The data to validate.
@@ -86,14 +106,14 @@ async function _getAirportByCode(code) {
     if (/^[A-Z]{3}$/.test(code)) {
         const index = getIataIndex();
         const results = index.get(code);
-        return results && results.length > 0 ? results[0] : null;
+        return results && results.length > 0 ? copyAirport(results[0]) : null;
     }
 
     // Validate and filter based on ICAO code format (4 uppercase letters/numbers)
     if (/^[A-Z0-9]{4}$/.test(code)) {
         const index = getIcaoIndex();
         const results = index.get(code);
-        return results && results.length > 0 ? results[0] : null;
+        return results && results.length > 0 ? copyAirport(results[0]) : null;
     }
 
     return null; // Return null if format is not recognized
@@ -113,7 +133,7 @@ async function getAirportByIata(iataCode = '') {
     if (results.length === 0) {
         throw new Error(`No data found for IATA code: ${iataCode}`);
     }
-    return results;
+    return copyAirports(results);
 }
 
 /**
@@ -130,7 +150,7 @@ async function getAirportByIcao(icaoCode = '') {
     if (results.length === 0) {
         throw new Error(`No data found for ICAO code: ${icaoCode}`);
     }
-    return results;
+    return copyAirports(results);
 }
 
 /**
@@ -146,7 +166,7 @@ async function getAirportByCountryCode(countryCode = '') {
     if (results.length === 0) {
         throw new Error(`No data found for Country Code: ${countryCode}`);
     }
-    return results;
+    return copyAirports(results);
 }
 
 /**
@@ -162,7 +182,7 @@ async function getAirportByContinent(continentCode = '') {
     if (results.length === 0) {
         throw new Error(`No data found for Continent Code: ${continentCode}`);
     }
-    return results;
+    return copyAirports(results);
 }
 
 /**
@@ -175,6 +195,9 @@ async function searchByName(query = '') {
     if (typeof query !== 'string' || query.length < 2) {
         throw new Error("Search query must be at least 2 characters long.");
     }
+    if (query.length > 100) {
+        throw new Error("Search query must not exceed 100 characters.");
+    }
     const lowerCaseQuery = query.toLowerCase();
 
     // Corrected to use 'airport' key instead of 'name'
@@ -182,7 +205,7 @@ async function searchByName(query = '') {
         item.airport.toLowerCase().includes(lowerCaseQuery)
     );
 
-    return results;
+    return copyAirports(results);
 }
 
 /**
@@ -194,6 +217,16 @@ async function searchByName(query = '') {
  * @returns {Promise<Array<object>>} A promise that resolves to an array of airports within the radius.
  */
 async function findNearbyAirports(lat, lon, radiusKm = 100) {
+    if (typeof lat !== 'number' || !isFinite(lat) || lat < -90 || lat > 90) {
+        throw new Error("Invalid latitude. Must be a finite number between -90 and 90.");
+    }
+    if (typeof lon !== 'number' || !isFinite(lon) || lon < -180 || lon > 180) {
+        throw new Error("Invalid longitude. Must be a finite number between -180 and 180.");
+    }
+    if (typeof radiusKm !== 'number' || !isFinite(radiusKm) || radiusKm <= 0) {
+        throw new Error("Invalid radius. Must be a positive finite number in kilometers.");
+    }
+
     const R = 6371; // Radius of the Earth in kilometers
     const toRad = (value) => (value * Math.PI) / 180;
 
@@ -218,7 +251,7 @@ async function findNearbyAirports(lat, lon, radiusKm = 100) {
         return distance <= radiusKm;
     });
 
-    return results;
+    return copyAirports(results);
 }
 
 /**
@@ -233,7 +266,7 @@ async function getAirportsByType(type = '') {
         throw new Error("Invalid type provided.");
     }
     const lowerCaseType = type.toLowerCase();
-    return getData().filter(airport => {
+    const results = getData().filter(airport => {
         // Handle both exact matches and partial matches for convenience
         if (!airport.type) return false;
         const airportType = airport.type.toLowerCase();
@@ -246,6 +279,7 @@ async function getAirportsByType(type = '') {
 
         return false;
     });
+    return copyAirports(results);
 }
 
 
@@ -292,7 +326,7 @@ async function calculateDistance(code1, code2) {
  * @returns {Promise<Array<object>>} A promise resolving to a list of matching airports.
  */
 async function getAutocompleteSuggestions(query = '') {
-    if (typeof query !== 'string' || query.length < 2) {
+    if (typeof query !== 'string' || query.length < 2 || query.length > 100) {
         return [];
     }
     const lowerCaseQuery = query.toLowerCase();
@@ -303,17 +337,39 @@ async function getAutocompleteSuggestions(query = '') {
     );
 
     // Return a limited number of results for performance
-    return results.slice(0, 10);
+    return copyAirports(results.slice(0, 10));
 }
+
+/**
+ * Set of allowed filter keys to prevent prototype pollution.
+ * Only known airport data properties can be used as filter keys.
+ * @private
+ */
+const ALLOWED_FILTER_KEYS = new Set([
+    'iata', 'icao', 'time', 'utc', 'country_code', 'continent',
+    'airport', 'latitude', 'longitude', 'elevation_ft', 'elevation',
+    'type', 'scheduled_service', 'wikipedia', 'website',
+    'runway_length', 'flightradar24_url', 'radarbox_url', 'flightaware_url',
+    'has_scheduled_service', 'min_runway_ft'
+]);
 
 /**
  * Finds airports that match multiple criteria.
  * @param {object} filters - An object of filters to apply.
  * @returns {Promise<Array<object>>} A promise resolving to matching airports.
+ * @throws {Error} Throws an error if an unrecognized filter key is provided.
  */
 async function findAirports(filters = {}) {
-    return getData().filter(airport => {
-        for (const key in filters) {
+    // Validate filter keys to prevent prototype pollution
+    const filterKeys = Object.keys(filters);
+    for (const key of filterKeys) {
+        if (!ALLOWED_FILTER_KEYS.has(key)) {
+            throw new Error(`Unrecognized filter key: '${key}'. Allowed keys: ${[...ALLOWED_FILTER_KEYS].join(', ')}`);
+        }
+    }
+
+    const results = getData().filter(airport => {
+        for (const key of filterKeys) {
             const filterValue = filters[key];
             switch (key) {
                 case 'has_scheduled_service':
@@ -337,12 +393,13 @@ async function findAirports(filters = {}) {
                     break;
 
                 default:
-                    // For other filters, do exact match
-                    if (airport[key] !== filterValue) return false;
+                    // For other filters, do exact match using hasOwnProperty check
+                    if (!Object.prototype.hasOwnProperty.call(airport, key) || airport[key] !== filterValue) return false;
             }
         }
         return true;
     });
+    return copyAirports(results);
 }
 
 
@@ -354,7 +411,7 @@ async function findAirports(filters = {}) {
 async function getAirportsByTimezone(timezone = '') {
     if (!timezone) throw new Error("Timezone cannot be empty.");
     // The data key is 'time', you might want to alias it to 'timezone'
-    return getData().filter(airport => airport.time === timezone);
+    return copyAirports(getData().filter(airport => airport.time === timezone));
 }
 
 /**
@@ -525,14 +582,20 @@ async function getAirportStatsByContinent(continentCode = '') {
  */
 async function getLargestAirportsByContinent(continentCode = '', limit = 10, sortBy = 'runway') {
     validateRegex(continentCode, /^[A-Z]{2}$/, "Invalid Continent Code format. Please provide a 2-letter uppercase code, e.g., 'AS'.");
+    if (typeof limit !== 'number' || !isFinite(limit) || limit < 1 || limit > 1000) {
+        throw new Error("Invalid limit. Must be a finite number between 1 and 1000.");
+    }
+    if (sortBy !== 'runway' && sortBy !== 'elevation') {
+        throw new Error("Invalid sortBy value. Must be 'runway' or 'elevation'.");
+    }
     const airports = getData().filter(airport => airport.continent === continentCode);
 
     if (airports.length === 0) {
         throw new Error(`No airports found for Continent Code: ${continentCode}`);
     }
 
-    // Sort based on criteria
-    const sorted = airports.sort((a, b) => {
+    // Sort a copy to avoid mutating the filtered array
+    const sorted = [...airports].sort((a, b) => {
         if (sortBy === 'elevation') {
             const elevA = parseInt(a.elevation, 10) || 0;
             const elevB = parseInt(b.elevation, 10) || 0;
@@ -545,7 +608,7 @@ async function getLargestAirportsByContinent(continentCode = '', limit = 10, sor
         }
     });
 
-    return sorted.slice(0, limit);
+    return copyAirports(sorted.slice(0, limit));
 }
 
 // ============================================================================
@@ -560,6 +623,9 @@ async function getLargestAirportsByContinent(continentCode = '', limit = 10, sor
 async function getMultipleAirports(codes = []) {
     if (!Array.isArray(codes)) {
         throw new Error("Codes must be an array of IATA or ICAO codes.");
+    }
+    if (codes.length > 500) {
+        throw new Error("Too many codes requested. Maximum allowed is 500.");
     }
 
     const results = await Promise.all(
@@ -584,6 +650,9 @@ async function getMultipleAirports(codes = []) {
 async function calculateDistanceMatrix(codes = []) {
     if (!Array.isArray(codes) || codes.length < 2) {
         throw new Error("Codes must be an array with at least 2 airport codes.");
+    }
+    if (codes.length > 100) {
+        throw new Error("Too many codes for distance matrix. Maximum allowed is 100 (produces 10,000 calculations).");
     }
 
     // Fetch all airports
@@ -638,6 +707,13 @@ async function calculateDistanceMatrix(codes = []) {
  * @returns {Promise<object|null>} The nearest airport object with distance, or null.
  */
 async function findNearestAirport(lat, lon, filters = {}) {
+    if (typeof lat !== 'number' || !isFinite(lat) || lat < -90 || lat > 90) {
+        throw new Error("Invalid latitude. Must be a finite number between -90 and 90.");
+    }
+    if (typeof lon !== 'number' || !isFinite(lon) || lon < -180 || lon > 180) {
+        throw new Error("Invalid longitude. Must be a finite number between -180 and 180.");
+    }
+
     const R = 6371; // Radius of the Earth in kilometers
     const toRad = (value) => (value * Math.PI) / 180;
 

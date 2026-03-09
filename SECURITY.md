@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Currently, only the latest major version of `airport-data-js` (or whatever you name your package) is being actively supported with security updates.
+Currently, only the latest major version of `airport-data-js` is being actively supported with security updates.
 
 ## Reporting a Vulnerability
 
