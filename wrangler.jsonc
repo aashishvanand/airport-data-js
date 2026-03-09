@@ -1,10 +1,18 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "airports-frontend",
-  "compatibility_date": "2025-04-01",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2026-03-10",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "main": "vinext/server/app-router-entry",
   "assets": {
     "not_found_handling": "none"
+  },
+  "observability": {
+    "logs": {
+      "enabled": false,
+      "invocation_logs": true
+    }
   }
 }
