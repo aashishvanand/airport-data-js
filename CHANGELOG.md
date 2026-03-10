@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [3.0.2] - 2026-03-11
+
+### 🚀 Performance
+
+- Added lazy-loaded lookup indices for country, continent, timezone, and type fields for O(1) access
+- Pre-computed geographic data (parsed lat/lon) to avoid repeated `parseFloat` calls in spatial queries
+- Optimized `getAirportByRadius` with bounding-box pre-filtering to skip expensive Haversine calculations
+- Extracted standalone `haversineDistance` helper with `DEG_TO_RAD` constant for faster math
+
+### 🔒 Data Integrity
+
+- All public API functions now return shallow copies of airport objects to prevent mutation of cached data
+- Added comprehensive input validation across all public functions
+
+### 📦 Packaging
+
+- Set `main` to `lib/index.js` (Node CJS) and added `browser` field for `dist/airport-data.min.js`
+- Added explicit `files` whitelist (`lib/`, `dist/`, `LICENSE`, `README.md`) for leaner npm package
+- Removed `.npmignore` in favour of the `files` field
+- Updated project homepage to `https://airportdata.dev/`
+
+### 🔄 Dependencies
+
+- Bumped `@babel/core` to 7.29.0, `@babel/preset-env` to 7.29.0
+- Bumped `webpack` to 5.105.4, `fs-extra` to 11.3.4, `countries-list` to 3.3.0
+- Bumped GitHub Actions: `actions/checkout` 6.0.2, `actions/setup-node` 6.3.0, `actions/upload-artifact` 7.0.0, `github/codeql-action` 4.32.5
+
 ## [3.0.1] - 2026-01-24
 
 ### 🔄 Improvements
