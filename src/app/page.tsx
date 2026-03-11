@@ -27,6 +27,7 @@ import ConnectingAirportsIcon from '@mui/icons-material/ConnectingAirports';
 import NearMeIcon from '@mui/icons-material/NearMe';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import RouteIcon from '@mui/icons-material/Route';
+import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import dynamic from 'next/dynamic';
 
 import {
@@ -71,6 +72,9 @@ const ValidationView = dynamic(() => import('../components/ValidationView'), {
   loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
 });
 const MultiCityTripView = dynamic(() => import('../components/MultiCityTripView'), {
+  loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
+});
+const LibrariesView = dynamic(() => import('../components/LibrariesView'), {
   loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>
 });
 
@@ -247,6 +251,7 @@ export default function UpdatedAirportSearch() {
       case 4: return <NearbyView />;
       case 5: return <ValidationView />;
       case 6: return <MultiCityTripView />;
+      case 7: return <LibrariesView />;
       default: return null;
     }
   };
@@ -292,6 +297,7 @@ export default function UpdatedAirportSearch() {
               <Tab label="Nearby" icon={<NearMeIcon />} iconPosition="start" />
               <Tab label="Validation" icon={<VerifiedUserIcon />} iconPosition="start" />
               <Tab label="Multi-City" icon={<RouteIcon />} iconPosition="start" />
+              <Tab label="Libraries" icon={<LibraryBooksIcon />} iconPosition="start" />
             </Tabs>
           </Container>
         </Box>
