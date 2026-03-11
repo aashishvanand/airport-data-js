@@ -8,7 +8,7 @@ import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CodeIcon from '@mui/icons-material/Code';
 import TerminalIcon from '@mui/icons-material/Terminal';
-import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+
 
 interface Library {
     name: string;
@@ -52,28 +52,28 @@ const libraries: Library[] = [
         color: '#3776ab',
     },
     {
-        name: 'airport_data_dart',
+        name: 'airport_data',
         language: 'Dart / Flutter',
         description: 'Airport data library for Dart and Flutter applications. Build cross-platform mobile, web, and desktop apps with comprehensive airport search and lookup capabilities.',
-        packageName: 'airport_data_dart',
-        installCommand: 'dart pub add airport_data_dart',
-        githubUrl: '',
-        registryUrl: '',
+        packageName: 'airport_data',
+        installCommand: 'dart pub add airport_data',
+        githubUrl: 'https://github.com/aashishvanand/airport-data-dart',
+        registryUrl: 'https://pub.dev/packages/airport_data',
         registryLabel: 'pub.dev',
-        status: 'coming_soon',
+        status: 'available',
         icon: 'DT',
         color: '#0175c2',
     },
     {
-        name: 'airport-data-rs',
+        name: 'airport-data',
         language: 'Rust',
         description: 'High-performance airport data library for Rust. Leverage Rust\'s speed and safety for aviation data lookups in CLI tools, web servers, and embedded systems.',
-        packageName: 'airport-data-rs',
-        installCommand: 'cargo add airport-data-rs',
-        githubUrl: '',
-        registryUrl: '',
+        packageName: 'airport-data',
+        installCommand: 'cargo add airport-data',
+        githubUrl: 'https://github.com/aashishvanand/airport-data-rust',
+        registryUrl: 'https://crates.io/crates/airport-data',
         registryLabel: 'crates.io',
-        status: 'coming_soon',
+        status: 'available',
         icon: 'RS',
         color: '#dea584',
     },
@@ -213,9 +213,6 @@ function LibraryCard({ lib }: { lib: Library }) {
 }
 
 export default function LibrariesView() {
-    const available = libraries.filter((l) => l.status === 'available');
-    const comingSoon = libraries.filter((l) => l.status === 'coming_soon');
-
     return (
         <Box>
             <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -227,24 +224,8 @@ export default function LibrariesView() {
                 Each library provides the same comprehensive dataset with a native, idiomatic API for its language.
             </Typography>
 
-            {/* Available */}
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                Available Now
-            </Typography>
-            <Grid container spacing={3} sx={{ mb: 5 }}>
-                {available.map((lib) => (
-                    <Grid size={{ xs: 12, sm: 6, lg: 6 }} key={lib.name}>
-                        <LibraryCard lib={lib} />
-                    </Grid>
-                ))}
-            </Grid>
-
-            {/* Coming soon */}
-            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                Coming Soon
-            </Typography>
             <Grid container spacing={3}>
-                {comingSoon.map((lib) => (
+                {libraries.map((lib) => (
                     <Grid size={{ xs: 12, sm: 6, lg: 6 }} key={lib.name}>
                         <LibraryCard lib={lib} />
                     </Grid>
