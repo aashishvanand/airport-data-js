@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-    Typography, Box, Card, CardContent, Grid, Chip, Button, Paper, Stack
+    Typography, Box, Card, CardContent, Grid, Button, Paper, Stack
 } from '@mui/material';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -19,7 +19,6 @@ interface Library {
     githubUrl: string;
     registryUrl: string;
     registryLabel: string;
-    status: 'available' | 'coming_soon';
     icon: string;
     color: string;
 }
@@ -34,7 +33,6 @@ const libraries: Library[] = [
         githubUrl: 'https://github.com/aashishvanand/airport-data-js',
         registryUrl: 'https://www.npmjs.com/package/airport-data-js',
         registryLabel: 'npm',
-        status: 'available',
         icon: 'JS',
         color: '#f7df1e',
     },
@@ -47,7 +45,6 @@ const libraries: Library[] = [
         githubUrl: 'https://github.com/aashishvanand/airport-data-python',
         registryUrl: 'https://pypi.org/project/airports-py/',
         registryLabel: 'PyPI',
-        status: 'available',
         icon: 'PY',
         color: '#3776ab',
     },
@@ -60,7 +57,6 @@ const libraries: Library[] = [
         githubUrl: 'https://github.com/aashishvanand/airport-data-dart',
         registryUrl: 'https://pub.dev/packages/airport_data',
         registryLabel: 'pub.dev',
-        status: 'available',
         icon: 'DT',
         color: '#0175c2',
     },
@@ -73,15 +69,36 @@ const libraries: Library[] = [
         githubUrl: 'https://github.com/aashishvanand/airport-data-rust',
         registryUrl: 'https://crates.io/crates/airport-data',
         registryLabel: 'crates.io',
-        status: 'available',
         icon: 'RS',
         color: '#dea584',
+    },
+    {
+        name: 'AirportData',
+        language: 'Swift',
+        description: 'Airport data library for Swift and Apple platforms. Build native iOS, macOS, tvOS, and watchOS apps with comprehensive airport search, distance calculation, and nearby airport lookup. Zero external dependencies.',
+        packageName: 'AirportData',
+        installCommand: '.package(url: "...airport-data-swift.git", from: "1.0.0")',
+        githubUrl: 'https://github.com/aashishvanand/airport-data-swift',
+        registryUrl: 'https://swiftpackageindex.com/aashishvanand/airport-data-swift',
+        registryLabel: 'Swift Package Index',
+        icon: 'SW',
+        color: '#f05138',
+    },
+    {
+        name: 'airport-data-go',
+        language: 'Go',
+        description: 'Airport data library for Go applications. Leverage Go\'s performance and simplicity for aviation data lookups in web servers, CLI tools, and microservices. Data embedded at compile time via go:embed.',
+        packageName: 'airport-data-go',
+        installCommand: 'go get github.com/aashishvanand/airport-data-go',
+        githubUrl: 'https://github.com/aashishvanand/airport-data-go',
+        registryUrl: 'https://pkg.go.dev/github.com/aashishvanand/airport-data-go',
+        registryLabel: 'pkg.go.dev',
+        icon: 'GO',
+        color: '#00add8',
     },
 ];
 
 function LibraryCard({ lib }: { lib: Library }) {
-    const isAvailable = lib.status === 'available';
-
     return (
         <Card
             sx={{
@@ -90,29 +107,10 @@ function LibraryCard({ lib }: { lib: Library }) {
                 flexDirection: 'column',
                 position: 'relative',
                 overflow: 'visible',
-                opacity: isAvailable ? 1 : 0.75,
                 transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                '&:hover': isAvailable
-                    ? { transform: 'translateY(-4px)', boxShadow: 6 }
-                    : {},
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
             }}
         >
-            {!isAvailable && (
-                <Chip
-                    icon={<HourglassEmptyIcon />}
-                    label="Coming Soon"
-                    color="warning"
-                    size="small"
-                    sx={{
-                        position: 'absolute',
-                        top: -12,
-                        right: 16,
-                        fontWeight: 600,
-                        zIndex: 1,
-                    }}
-                />
-            )}
-
             <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 2, p: 3 }}>
                 {/* Header */}
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -167,7 +165,7 @@ function LibraryCard({ lib }: { lib: Library }) {
                         sx={{
                             fontFamily: 'monospace',
                             fontWeight: 600,
-                            color: isAvailable ? 'text.primary' : 'text.disabled',
+                            color: 'text.primary',
                         }}
                     >
                         {lib.installCommand}
@@ -178,35 +176,29 @@ function LibraryCard({ lib }: { lib: Library }) {
                 <Box sx={{ flexGrow: 1 }} />
 
                 {/* Actions */}
-                {isAvailable ? (
-                    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                        <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={<CodeIcon />}
-                            endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                            href={lib.githubUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            GitHub
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            size="small"
-                            endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                            href={lib.registryUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {lib.registryLabel}
-                        </Button>
-                    </Stack>
-                ) : (
-                    <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic' }}>
-                        Stay tuned for updates
-                    </Typography>
-                )}
+                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                    <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<CodeIcon />}
+                        endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                        href={lib.githubUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        GitHub
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        size="small"
+                        endIcon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                        href={lib.registryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        {lib.registryLabel}
+                    </Button>
+                </Stack>
             </CardContent>
         </Card>
     );
