@@ -96,6 +96,18 @@ const libraries: Library[] = [
         icon: 'GO',
         color: '#00add8',
     },
+    {
+        name: 'airport-data',
+        language: 'Kotlin',
+        description: 'Airport data library for Kotlin and JVM applications. Build Android apps, backend services with Ktor or Spring, and multiplatform projects with comprehensive airport search and lookup capabilities.',
+        packageName: 'dev.airportdata:airport-data',
+        installCommand: 'implementation("dev.airportdata:airport-data:1.0.0")',
+        githubUrl: 'https://github.com/aashishvanand/airport-data-kotlin',
+        registryUrl: 'https://central.sonatype.com/artifact/dev.airportdata/airport-data',
+        registryLabel: 'Maven Central',
+        icon: 'KT',
+        color: '#7f52ff',
+    },
 ];
 
 function LibraryCard({ lib }: { lib: Library }) {
