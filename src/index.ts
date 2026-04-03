@@ -1196,9 +1196,9 @@ export async function calculateDistanceMatrix(codes: string[] = []): Promise<Dis
     }));
 
     const n = codes.length;
-    const distancesObj: Record<string, Record<string, number>> = {};
+    const distancesObj: Record<string, Record<string, number>> = Object.create(null);
     for (let i = 0; i < n; i++) {
-        distancesObj[codes[i]] = {};
+        distancesObj[codes[i]] = Object.create(null);
         distancesObj[codes[i]][codes[i]] = 0;
     }
 
