@@ -451,3 +451,99 @@ This project is licensed under the Creative Commons Attribution 4.0 Internationa
 ## Contributing
 
 Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/aashishvanand/airport-data-js/issues).
+
+### Getting Started
+
+```bash
+# Clone the repository
+git clone https://github.com/aashishvanand/airport-data-js.git
+cd airport-data-js
+
+# Install dependencies
+npm install
+
+# Run the test suite
+npm test
+
+# Build both Node.js and browser bundles
+npm run build
+```
+
+### Project Structure
+
+```
+airport-data-js/
+├── src/
+│   ├── index.js                  # Library source code
+│   └── airports.compressed       # Compressed airport dataset
+├── lib/                          # Node.js CJS build output
+├── dist/                         # Browser build output
+├── data/
+│   └── airports.json             # Raw airport data (source of truth)
+├── scripts/
+│   ├── compress_json.js          # Compresses airports.json for distribution
+│   ├── check_duplicates.js       # Validates no duplicate IATA/ICAO codes
+│   ├── extract_latest_changelog.js # Extracts changelog for GitHub releases
+│   └── benchmark.js              # Performance benchmarks
+├── tests/
+│   └── index.test.js             # Jest test suite
+├── webpack.node.cjs              # Webpack config for Node.js bundle
+└── webpack.browser.cjs           # Webpack config for browser bundle
+```
+
+### Available Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm test` | Run the Jest test suite |
+| `npm run build` | Build both Node.js (`lib/`) and browser (`dist/`) bundles |
+| `npm run build:lib` | Build only the Node.js bundle |
+| `npm run build:dist` | Build only the browser bundle |
+| `npm run check:duplicates` | Check for duplicate airport codes in the dataset |
+
+### Development Workflow
+
+1. **Create a branch** from `main` for your changes
+2. **Make your changes** in `src/index.js` or `data/airports.json`
+3. **Add or update tests** in `tests/index.test.js`
+4. **Run tests** to make sure everything passes: `npm test`
+5. **Build** to verify the bundles compile: `npm run build`
+6. **Submit a pull request** against `main`
+
+### Updating Airport Data
+
+If you are adding or updating airport entries:
+
+1. Edit `data/airports.json` directly
+2. Run `npm run check:duplicates` to ensure no duplicate IATA/ICAO codes
+3. Run `node scripts/compress_json.js` to regenerate the compressed dataset
+4. Run `npm test` to verify the changes
+5. Submit a pull request with both the JSON and compressed data changes
+
+## Publishing a New Version
+
+Releases are automated via the [release workflow](.github/workflows/release.yml). To publish a new version:
+
+1. **Update the version** in `package.json` (follow [Semantic Versioning](https://semver.org/))
+2. **Update `CHANGELOG.md`** with a new section for the version (follow [Keep a Changelog](https://keepachangelog.com/) format)
+3. **Build and test locally** to confirm everything works:
+   ```bash
+   npm run build && npm test
+   ```
+4. **Commit your changes** to `main`
+5. **Push or merge to the `release` branch** -- this triggers the CI pipeline which will:
+   - Run tests across Node.js 20.x, 22.x, and 24.x
+   - Run a security audit (`npm audit --audit-level=critical`)
+   - Check for duplicate airport codes
+   - Build the package
+   - Compare the version in `package.json` against the published npm version
+   - **Publish to npm** with provenance (if the version is new)
+   - **Create a GitHub Release** with notes extracted from `CHANGELOG.md`
+
+The workflow can also be triggered manually via `workflow_dispatch` from the Actions tab.
+
+### Version Policy
+
+- **Patch** (e.g., 3.0.1 -> 3.0.2): Data updates, bug fixes, performance improvements, dependency bumps
+- **Minor** (e.g., 3.0.x -> 3.1.0): New functions or non-breaking feature additions
+- **Major** (e.g., 3.x.x -> 4.0.0): Breaking API changes or data format changes

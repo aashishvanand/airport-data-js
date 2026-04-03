@@ -1,4 +1,5 @@
-// Import all functions from your library
+import type { Airport, AirportWithDistance, AirportLinks, AirportCountryStats, AirportContinentStats, DistanceMatrix } from '../types/index';
+
 const {
     getAirportByIata,
     getAirportByIcao,
@@ -12,156 +13,143 @@ const {
     findAirports,
     getAirportsByTimezone,
     getAirportLinks,
-    // Statistical & Analytical Functions
     getAirportStatsByCountry,
     getAirportStatsByContinent,
     getLargestAirportsByContinent,
-    // Bulk Operations
     getMultipleAirports,
     calculateDistanceMatrix,
     findNearestAirport,
-    // Validation & Utilities
     validateIataCode,
     validateIcaoCode,
     getAirportCount,
     isAirportOperational
-} = require('../dist/airport-data.min.js'); // Adjust the path if needed
+} = require('../lib/index.js');
 
 describe('Airport Data Library (Live Data)', () => {
 
-    // Test for getAirportByIata
+    // ========================================================================
+    // Core Search Functions
+    // ========================================================================
+
     describe('getAirportByIata', () => {
         test('should retrieve airport data for a valid IATA code', async () => {
-            const [airport] = await getAirportByIata('LHR');
+            const [airport]: Airport[] = await getAirportByIata('LHR');
             expect(airport.iata).toBe('LHR');
             expect(airport.airport).toContain('Heathrow');
         });
     });
 
-    // Test for getAirportByIcao
     describe('getAirportByIcao', () => {
         test('should retrieve airport data for a valid ICAO code', async () => {
-            const [airport] = await getAirportByIcao('EGLL');
+            const [airport]: Airport[] = await getAirportByIcao('EGLL');
             expect(airport.icao).toBe('EGLL');
             expect(airport.airport).toContain('Heathrow');
         });
     });
 
-    // Test for getAirportByCountryCode
     describe('getAirportByCountryCode', () => {
         test('should retrieve all airports for a given country code', async () => {
-            const airports = await getAirportByCountryCode('US');
-            expect(airports.length).toBeGreaterThan(100); // There are many US airports
+            const airports: Airport[] = await getAirportByCountryCode('US');
+            expect(airports.length).toBeGreaterThan(100);
             expect(airports[0].country_code).toBe('US');
         });
     });
 
-    // Test for getAirportByContinent
     describe('getAirportByContinent', () => {
         test('should retrieve all airports for a given continent code', async () => {
-            const airports = await getAirportByContinent('EU');
-            expect(airports.length).toBeGreaterThan(100); // There are many EU airports
-            expect(airports.every(a => a.continent === 'EU')).toBe(true);
+            const airports: Airport[] = await getAirportByContinent('EU');
+            expect(airports.length).toBeGreaterThan(100);
+            expect(airports.every((a: Airport) => a.continent === 'EU')).toBe(true);
         });
     });
 
-    // Test for findNearbyAirports
     describe('findNearbyAirports', () => {
         test('should find airports within a given radius', async () => {
-            // This now checks that LHR is one of the several airports around London
             const lat = 51.5074;
             const lon = -0.1278;
-            const airports = await findNearbyAirports(lat, lon, 50); // 50km radius
+            const airports: Airport[] = await findNearbyAirports(lat, lon, 50);
             expect(airports.length).toBeGreaterThanOrEqual(1);
-            expect(airports.some(a => a.iata === 'LHR')).toBe(true);
+            expect(airports.some((a: Airport) => a.iata === 'LHR')).toBe(true);
         });
     });
 
-    // Test for getAirportsByType
     describe('getAirportsByType', () => {
         test('should retrieve all large airports', async () => {
-            const airports = await getAirportsByType('large_airport');
+            const airports: Airport[] = await getAirportsByType('large_airport');
             expect(airports.length).toBeGreaterThan(10);
-            expect(airports.every(a => a.type === 'large_airport')).toBe(true);
+            expect(airports.every((a: Airport) => a.type === 'large_airport')).toBe(true);
         });
 
         test('should retrieve all medium airports', async () => {
-            const airports = await getAirportsByType('medium_airport');
+            const airports: Airport[] = await getAirportsByType('medium_airport');
             expect(airports.length).toBeGreaterThan(10);
-            expect(airports.every(a => a.type === 'medium_airport')).toBe(true);
+            expect(airports.every((a: Airport) => a.type === 'medium_airport')).toBe(true);
         });
 
         test('should retrieve all airports when searching for "airport"', async () => {
-            const airports = await getAirportsByType('airport');
-            expect(airports.length).toBeGreaterThan(50); // Should include large, medium, and small airports
-            expect(airports.every(a => a.type && a.type.includes('airport'))).toBe(true);
+            const airports: Airport[] = await getAirportsByType('airport');
+            expect(airports.length).toBeGreaterThan(50);
+            expect(airports.every((a: Airport) => a.type && a.type.includes('airport'))).toBe(true);
         });
 
         test('should handle different airport types', async () => {
-            const heliports = await getAirportsByType('heliport');
+            const heliports: Airport[] = await getAirportsByType('heliport');
             expect(Array.isArray(heliports)).toBe(true);
             if (heliports.length > 0) {
-                expect(heliports.every(a => a.type === 'heliport')).toBe(true);
+                expect(heliports.every((a: Airport) => a.type === 'heliport')).toBe(true);
             }
 
-            const seaplaneBases = await getAirportsByType('seaplane_base');
+            const seaplaneBases: Airport[] = await getAirportsByType('seaplane_base');
             expect(Array.isArray(seaplaneBases)).toBe(true);
             if (seaplaneBases.length > 0) {
-                expect(seaplaneBases.every(a => a.type === 'seaplane_base')).toBe(true);
+                expect(seaplaneBases.every((a: Airport) => a.type === 'seaplane_base')).toBe(true);
             }
         });
 
         test('should handle case-insensitive searches', async () => {
-            const upperCase = await getAirportsByType('LARGE_AIRPORT');
-            const lowerCase = await getAirportsByType('large_airport');
+            const upperCase: Airport[] = await getAirportsByType('LARGE_AIRPORT');
+            const lowerCase: Airport[] = await getAirportsByType('large_airport');
             expect(upperCase.length).toBe(lowerCase.length);
             expect(upperCase.length).toBeGreaterThan(0);
         });
 
         test('should return empty array for non-existent type', async () => {
-            const airports = await getAirportsByType('nonexistent_type');
+            const airports: Airport[] = await getAirportsByType('nonexistent_type');
             expect(airports.length).toBe(0);
         });
     });
 
-    // Test for getAutocompleteSuggestions
     describe('getAutocompleteSuggestions', () => {
         test('should return suggestions based on airport name', async () => {
-            const suggestions = await getAutocompleteSuggestions('London');
-            // Autocomplete should return up to 10 results
+            const suggestions: Airport[] = await getAutocompleteSuggestions('London');
             expect(suggestions.length).toBeGreaterThan(0);
             expect(suggestions.length).toBeLessThanOrEqual(10);
-            expect(suggestions.some(a => a.iata === 'LHR')).toBe(true);
+            expect(suggestions.some((a: Airport) => a.iata === 'LHR')).toBe(true);
         });
     });
 
-    // Test for calculateDistance
     describe('calculateDistance', () => {
         test('should calculate the distance between two airports using IATA codes', async () => {
-            const distance = await calculateDistance('LHR', 'JFK');
-            expect(distance).toBeCloseTo(5541, 0); // Approx distance in km
+            const distance: number = await calculateDistance('LHR', 'JFK');
+            expect(distance).toBeCloseTo(5541, 0);
         });
     });
-
 
     describe('findAirports (Advanced Filtering)', () => {
         test('should find airports with multiple matching criteria', async () => {
-            const airports = await findAirports({ country_code: 'GB', type: 'airport' });
-            expect(airports.length).toBeGreaterThanOrEqual(0); // More flexible expectation
-            expect(airports.every(a => a.country_code === 'GB' && a.type.toLowerCase() === 'airport')).toBe(true);
+            const airports: Airport[] = await findAirports({ country_code: 'GB', type: 'airport' });
+            expect(airports.length).toBeGreaterThanOrEqual(0);
+            expect(airports.every((a: Airport) => a.country_code === 'GB' && a.type.toLowerCase() === 'airport')).toBe(true);
         });
 
         test('should filter by scheduled service availability', async () => {
-            // Test with true first to see if we get results
-            const airportsWithService = await findAirports({ has_scheduled_service: true });
-            const airportsWithoutService = await findAirports({ has_scheduled_service: false });
+            const airportsWithService: Airport[] = await findAirports({ has_scheduled_service: true });
+            const airportsWithoutService: Airport[] = await findAirports({ has_scheduled_service: false });
 
-            // At least one of these should have results
             expect(airportsWithService.length + airportsWithoutService.length).toBeGreaterThan(0);
 
-            // Check that the filtering works correctly
             if (airportsWithService.length > 0) {
-                expect(airportsWithService.every(a => {
+                expect(airportsWithService.every((a: Airport) => {
                     const scheduled = typeof a.scheduled_service === 'string'
                         ? a.scheduled_service.toLowerCase() === 'yes'
                         : a.scheduled_service === true;
@@ -170,7 +158,7 @@ describe('Airport Data Library (Live Data)', () => {
             }
 
             if (airportsWithoutService.length > 0) {
-                expect(airportsWithoutService.every(a => {
+                expect(airportsWithoutService.every((a: Airport) => {
                     const scheduled = typeof a.scheduled_service === 'string'
                         ? a.scheduled_service.toLowerCase() === 'yes'
                         : a.scheduled_service === true;
@@ -182,37 +170,33 @@ describe('Airport Data Library (Live Data)', () => {
 
     describe('getAirportsByTimezone', () => {
         test('should find all airports within a specific timezone', async () => {
-            const airports = await getAirportsByTimezone('Europe/London');
+            const airports: Airport[] = await getAirportsByTimezone('Europe/London');
             expect(airports.length).toBeGreaterThan(10);
-            expect(airports.every(a => a.time === 'Europe/London')).toBe(true);
+            expect(airports.every((a: Airport) => a.time === 'Europe/London')).toBe(true);
         });
     });
 
     describe('getAirportLinks', () => {
-        // This test is now updated based on the "Received" output from your test run.
         test('should retrieve a map of all available external links', async () => {
-            const links = await getAirportLinks('LHR');
+            const links: AirportLinks = await getAirportLinks('LHR');
             expect(links.wikipedia).toContain('Heathrow_Airport');
-            expect(links.website).not.toBeUndefined(); // Check that a website link exists
+            expect(links.website).not.toBeUndefined();
         });
 
-        // This test is updated based on the "Received" output from your test run.
         test('should handle airports with missing links gracefully', async () => {
-            const links = await getAirportLinks('HND');
+            const links: AirportLinks = await getAirportLinks('HND');
             expect(links.wikipedia).toContain('Tokyo_International_Airport');
-            // This airport has a website, so we check for it.
-            // If another airport had no website, links.website would be undefined, which is correct.
             expect(links.website).not.toBeUndefined();
         });
     });
 
     // ========================================================================
-    // Statistical & Analytical Functions Tests
+    // Statistical & Analytical Functions
     // ========================================================================
 
     describe('getAirportStatsByCountry', () => {
         test('should return comprehensive statistics for a country', async () => {
-            const stats = await getAirportStatsByCountry('SG');
+            const stats: AirportCountryStats = await getAirportStatsByCountry('SG');
             expect(stats).toHaveProperty('total');
             expect(stats).toHaveProperty('byType');
             expect(stats).toHaveProperty('withScheduledService');
@@ -224,7 +208,7 @@ describe('Airport Data Library (Live Data)', () => {
         });
 
         test('should calculate correct statistics for US airports', async () => {
-            const stats = await getAirportStatsByCountry('US');
+            const stats: AirportCountryStats = await getAirportStatsByCountry('US');
             expect(stats.total).toBeGreaterThan(1000);
             expect(stats.byType).toHaveProperty('large_airport');
             expect(stats.byType.large_airport).toBeGreaterThan(0);
@@ -237,7 +221,7 @@ describe('Airport Data Library (Live Data)', () => {
 
     describe('getAirportStatsByContinent', () => {
         test('should return comprehensive statistics for a continent', async () => {
-            const stats = await getAirportStatsByContinent('AS');
+            const stats: AirportContinentStats = await getAirportStatsByContinent('AS');
             expect(stats).toHaveProperty('total');
             expect(stats).toHaveProperty('byType');
             expect(stats).toHaveProperty('byCountry');
@@ -247,7 +231,7 @@ describe('Airport Data Library (Live Data)', () => {
         });
 
         test('should include country breakdown', async () => {
-            const stats = await getAirportStatsByContinent('EU');
+            const stats: AirportContinentStats = await getAirportStatsByContinent('EU');
             expect(stats.byCountry).toHaveProperty('GB');
             expect(stats.byCountry).toHaveProperty('FR');
             expect(stats.byCountry).toHaveProperty('DE');
@@ -256,21 +240,19 @@ describe('Airport Data Library (Live Data)', () => {
 
     describe('getLargestAirportsByContinent', () => {
         test('should return top airports by runway length', async () => {
-            const airports = await getLargestAirportsByContinent('AS', 5, 'runway');
+            const airports: Airport[] = await getLargestAirportsByContinent('AS', 5, 'runway');
             expect(airports.length).toBeLessThanOrEqual(5);
             expect(airports.length).toBeGreaterThan(0);
-            // Check that results are sorted by runway length
             for (let i = 0; i < airports.length - 1; i++) {
-                const runway1 = parseInt(airports[i].runway_length, 10) || 0;
-                const runway2 = parseInt(airports[i + 1].runway_length, 10) || 0;
+                const runway1 = parseInt(airports[i].runway_length || '0', 10) || 0;
+                const runway2 = parseInt(airports[i + 1].runway_length || '0', 10) || 0;
                 expect(runway1).toBeGreaterThanOrEqual(runway2);
             }
         });
 
         test('should return top airports by elevation', async () => {
-            const airports = await getLargestAirportsByContinent('SA', 5, 'elevation');
+            const airports: Airport[] = await getLargestAirportsByContinent('SA', 5, 'elevation');
             expect(airports.length).toBeLessThanOrEqual(5);
-            // Check that results are sorted by elevation
             for (let i = 0; i < airports.length - 1; i++) {
                 const elev1 = parseInt(airports[i].elevation, 10) || 0;
                 const elev2 = parseInt(airports[i + 1].elevation, 10) || 0;
@@ -279,32 +261,32 @@ describe('Airport Data Library (Live Data)', () => {
         });
 
         test('should respect the limit parameter', async () => {
-            const airports = await getLargestAirportsByContinent('EU', 3);
+            const airports: Airport[] = await getLargestAirportsByContinent('EU', 3);
             expect(airports.length).toBeLessThanOrEqual(3);
         });
     });
 
     // ========================================================================
-    // Bulk Operations Tests
+    // Bulk Operations
     // ========================================================================
 
     describe('getMultipleAirports', () => {
         test('should fetch multiple airports by IATA codes', async () => {
-            const airports = await getMultipleAirports(['SIN', 'LHR', 'JFK']);
+            const airports: (Airport | null)[] = await getMultipleAirports(['SIN', 'LHR', 'JFK']);
             expect(airports.length).toBe(3);
-            expect(airports[0].iata).toBe('SIN');
-            expect(airports[1].iata).toBe('LHR');
-            expect(airports[2].iata).toBe('JFK');
+            expect(airports[0]!.iata).toBe('SIN');
+            expect(airports[1]!.iata).toBe('LHR');
+            expect(airports[2]!.iata).toBe('JFK');
         });
 
         test('should handle mix of IATA and ICAO codes', async () => {
-            const airports = await getMultipleAirports(['SIN', 'EGLL', 'JFK']);
+            const airports: (Airport | null)[] = await getMultipleAirports(['SIN', 'EGLL', 'JFK']);
             expect(airports.length).toBe(3);
-            expect(airports.every(a => a !== null)).toBe(true);
+            expect(airports.every((a: Airport | null) => a !== null)).toBe(true);
         });
 
         test('should return null for invalid codes', async () => {
-            const airports = await getMultipleAirports(['SIN', 'INVALID', 'LHR']);
+            const airports: (Airport | null)[] = await getMultipleAirports(['SIN', 'INVALID', 'LHR']);
             expect(airports.length).toBe(3);
             expect(airports[0]).not.toBeNull();
             expect(airports[1]).toBeNull();
@@ -312,28 +294,25 @@ describe('Airport Data Library (Live Data)', () => {
         });
 
         test('should handle empty array', async () => {
-            const airports = await getMultipleAirports([]);
+            const airports: (Airport | null)[] = await getMultipleAirports([]);
             expect(airports.length).toBe(0);
         });
     });
 
     describe('calculateDistanceMatrix', () => {
         test('should calculate distance matrix for multiple airports', async () => {
-            const matrix = await calculateDistanceMatrix(['SIN', 'LHR', 'JFK']);
+            const matrix: DistanceMatrix = await calculateDistanceMatrix(['SIN', 'LHR', 'JFK']);
             expect(matrix).toHaveProperty('airports');
             expect(matrix).toHaveProperty('distances');
             expect(matrix.airports.length).toBe(3);
 
-            // Check diagonal is zero
             expect(matrix.distances.SIN.SIN).toBe(0);
             expect(matrix.distances.LHR.LHR).toBe(0);
             expect(matrix.distances.JFK.JFK).toBe(0);
 
-            // Check symmetry
             expect(matrix.distances.SIN.LHR).toBe(matrix.distances.LHR.SIN);
             expect(matrix.distances.SIN.JFK).toBe(matrix.distances.JFK.SIN);
 
-            // Check reasonable distances
             expect(matrix.distances.SIN.LHR).toBeGreaterThan(5000);
             expect(matrix.distances.LHR.JFK).toBeGreaterThan(3000);
         });
@@ -349,14 +328,14 @@ describe('Airport Data Library (Live Data)', () => {
 
     describe('findNearestAirport', () => {
         test('should find nearest airport to coordinates', async () => {
-            const nearest = await findNearestAirport(1.35019, 103.994003);
+            const nearest: AirportWithDistance = await findNearestAirport(1.35019, 103.994003);
             expect(nearest).toHaveProperty('distance');
             expect(nearest.iata).toBe('SIN');
-            expect(nearest.distance).toBeLessThan(2); // Very close to Changi
+            expect(nearest.distance).toBeLessThan(2);
         });
 
         test('should find nearest airport with type filter', async () => {
-            const nearest = await findNearestAirport(51.5074, -0.1278, {
+            const nearest: AirportWithDistance = await findNearestAirport(51.5074, -0.1278, {
                 type: 'large_airport'
             });
             expect(nearest).not.toBeNull();
@@ -365,7 +344,7 @@ describe('Airport Data Library (Live Data)', () => {
         });
 
         test('should find nearest airport with type and country filters', async () => {
-            const nearest = await findNearestAirport(40.7128, -74.0060, {
+            const nearest: AirportWithDistance = await findNearestAirport(40.7128, -74.0060, {
                 type: 'large_airport',
                 country_code: 'US'
             });
@@ -377,7 +356,7 @@ describe('Airport Data Library (Live Data)', () => {
     });
 
     // ========================================================================
-    // Validation & Utilities Tests
+    // Validation & Utilities
     // ========================================================================
 
     describe('validateIataCode', () => {
@@ -422,24 +401,24 @@ describe('Airport Data Library (Live Data)', () => {
 
     describe('getAirportCount', () => {
         test('should return total count of all airports', async () => {
-            const count = await getAirportCount();
+            const count: number = await getAirportCount();
             expect(count).toBeGreaterThan(5000);
         });
 
         test('should return count with type filter', async () => {
-            const largeCount = await getAirportCount({ type: 'large_airport' });
-            const totalCount = await getAirportCount();
+            const largeCount: number = await getAirportCount({ type: 'large_airport' });
+            const totalCount: number = await getAirportCount();
             expect(largeCount).toBeGreaterThan(0);
             expect(largeCount).toBeLessThan(totalCount);
         });
 
         test('should return count with country filter', async () => {
-            const usCount = await getAirportCount({ country_code: 'US' });
+            const usCount: number = await getAirportCount({ country_code: 'US' });
             expect(usCount).toBeGreaterThan(1000);
         });
 
         test('should return count with multiple filters', async () => {
-            const count = await getAirportCount({
+            const count: number = await getAirportCount({
                 country_code: 'US',
                 type: 'large_airport'
             });

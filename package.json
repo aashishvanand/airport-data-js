@@ -1,21 +1,38 @@
 {
   "name": "airport-data-js",
-  "version": "3.0.2",
+  "version": "3.1.0",
   "type": "commonjs",
-  "description": "A comprehensive library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents.",
+  "description": "A comprehensive TypeScript library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Includes LLM tool definitions for AI integration.",
   "main": "lib/index.js",
+  "types": "types/index.d.ts",
   "browser": "dist/airport-data.min.js",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "require": "./lib/index.js",
+      "default": "./lib/index.js"
+    },
+    "./tools": {
+      "types": "./types/tools.d.ts",
+      "require": "./lib/tools.js",
+      "default": "./lib/tools.js"
+    }
+  },
   "files": [
     "lib/",
     "dist/",
+    "types/",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
     "test": "jest --config jest.config.cjs",
+    "typecheck": "tsc --noEmit",
+    "build:types": "tsc --emitDeclarationOnly",
     "build:lib": "webpack --config webpack.node.cjs",
     "build:dist": "webpack --config webpack.browser.cjs",
-    "build": "npm run build:lib && npm run build:dist",
+    "build:tools": "webpack --config webpack.tools.cjs",
+    "build": "npm run build:types && npm run build:lib && npm run build:dist && npm run build:tools",
     "check:duplicates": "node scripts/check_duplicates.js"
   },
   "dependencies": {
@@ -57,6 +74,7 @@
     "@babel/core": "^7.28.6",
     "@babel/plugin-transform-modules-commonjs": "^7.28.6",
     "@babel/preset-env": "^7.28.6",
+    "@types/jest": "^30.0.0",
     "arraybuffer-loader": "^1.0.8",
     "babel-jest": "^30.2.0",
     "babel-loader": "^10.0.0",
@@ -69,7 +87,10 @@
     "jest": "^30.2.0",
     "path-browserify": "^1.0.1",
     "raw-loader": "^4.0.2",
+    "ts-jest": "^29.4.9",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.7.3",
     "webpack": "^5.104.1",
-    "webpack-cli": "^6.0.1"
+    "webpack-cli": "^7.0.2"
   }
 }
