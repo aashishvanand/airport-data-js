@@ -34,7 +34,7 @@ module.exports = {
             },
             {
                 test: /\.compressed$/,
-                use: 'raw-loader',
+                type: 'asset/source',
             }
         ]
     },

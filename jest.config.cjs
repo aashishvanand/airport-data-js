@@ -2,14 +2,7 @@ module.exports = {
   testEnvironment: 'node',
   transform: {
     "^.+\\.tsx?$": ["ts-jest", {
-      tsconfig: {
-        module: "commonjs",
-        moduleResolution: "node",
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-        strict: false,
-        skipLibCheck: true
-      }
+      tsconfig: "./tsconfig.test.json"
     }],
     "^.+\\.jsx?$": "babel-jest"
   }

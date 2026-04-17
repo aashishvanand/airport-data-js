@@ -70,26 +70,25 @@
     "url": "https://github.com/aashishvanand/airport-data-js/issues"
   },
   "homepage": "https://airportdata.dev/",
+  "overrides": {
+    "brace-expansion@1": "^1.1.14",
+    "brace-expansion@2": "^2.1.0",
+    "ajv@8": "^8.18.0"
+  },
   "devDependencies": {
     "@babel/core": "^7.28.6",
     "@babel/plugin-transform-modules-commonjs": "^7.28.6",
     "@babel/preset-env": "^7.28.6",
     "@types/jest": "^30.0.0",
-    "arraybuffer-loader": "^1.0.8",
     "babel-jest": "^30.2.0",
     "babel-loader": "^10.0.0",
-    "countries-and-timezones": "^3.8.0",
-    "countries-list": "^3.2.2",
     "csv-parse": "^6.1.0",
-    "csv-stringify": "^6.6.0",
     "fs-extra": "^11.3.3",
-    "geo-tz": "^8.1.5",
     "jest": "^30.2.0",
     "path-browserify": "^1.0.1",
-    "raw-loader": "^4.0.2",
-    "ts-jest": "^29.4.9",
+"ts-jest": "^29.4.9",
     "ts-loader": "^9.5.1",
-    "typescript": "^5.7.3",
+    "typescript": "^6.0.3",
     "webpack": "^5.104.1",
     "webpack-cli": "^7.0.2"
   }
