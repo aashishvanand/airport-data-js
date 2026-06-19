@@ -73,23 +73,26 @@
   "overrides": {
     "brace-expansion@1": "^1.1.14",
     "brace-expansion@2": "^2.1.0",
-    "ajv@8": "^8.18.0"
+    "ajv@8": "^8.18.0",
+    "ts-jest": {
+      "@babel/core": "$@babel/core"
+    }
   },
   "devDependencies": {
-    "@babel/core": "^7.28.6",
-    "@babel/plugin-transform-modules-commonjs": "^7.28.6",
-    "@babel/preset-env": "^8.0.1",
+    "@babel/core": "^8.0.1",
+    "@babel/plugin-transform-modules-commonjs": "^8.0.1",
+    "@babel/preset-env": "^8.0.2",
     "@types/jest": "^30.0.0",
-    "babel-jest": "^30.2.0",
-    "babel-loader": "^10.0.0",
+    "babel-jest": "^30.4.1",
+    "babel-loader": "^10.1.1",
     "csv-parse": "^7.0.0",
-    "fs-extra": "^11.3.3",
-    "jest": "^30.2.0",
+    "fs-extra": "^11.3.5",
+    "jest": "^30.4.2",
     "path-browserify": "^1.0.1",
-"ts-jest": "^29.4.9",
-    "ts-loader": "^9.5.1",
+"ts-jest": "^29.4.11",
+    "ts-loader": "^9.6.1",
     "typescript": "^6.0.3",
-    "webpack": "^5.104.1",
-    "webpack-cli": "^7.0.2"
+    "webpack": "^5.107.2",
+    "webpack-cli": "^7.0.3"
   }
 }
