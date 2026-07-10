@@ -10,7 +10,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["jest", "node"]
+    "types": ["vitest/globals", "node"]
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"]
 }

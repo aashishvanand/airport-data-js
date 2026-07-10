@@ -474,38 +474,48 @@ npm run build
 ```
 airport-data-js/
 ├── src/
-│   ├── index.js                  # Library source code
-│   └── airports.compressed       # Compressed airport dataset
+│   ├── index.ts                  # Library source code
+│   ├── tools.ts                  # LLM tool-definition exports
+│   └── airports.data.json        # Gzip+base64 airport dataset (generated)
+├── .tsbuild/                     # Intermediate tsc output (generated, not committed)
 ├── lib/                          # Node.js CJS build output
 ├── dist/                         # Browser build output
 ├── data/
-│   └── airports.json             # Raw airport data (source of truth)
+│   ├── airports.csv              # Raw source data
+│   └── airports.json             # Converted JSON (source of truth for compression)
 ├── scripts/
-│   ├── compress_json.js          # Compresses airports.json for distribution
-│   ├── check_duplicates.js       # Validates no duplicate IATA/ICAO codes
-│   ├── extract_latest_changelog.js # Extracts changelog for GitHub releases
-│   └── benchmark.js              # Performance benchmarks
+│   ├── csv_to_json.ts            # Converts airports.csv to airports.json
+│   ├── compress_json.ts          # Gzips airports.json into src/airports.data.json
+│   ├── check_duplicates.ts       # Validates no duplicate IATA/ICAO codes
+│   ├── extract_latest_changelog.ts # Extracts changelog for GitHub releases
+│   └── benchmark.ts              # Performance benchmarks
 ├── tests/
-│   └── index.test.js             # Jest test suite
+│   └── index.test.ts             # Vitest test suite
 ├── webpack.node.cjs              # Webpack config for Node.js bundle
-└── webpack.browser.cjs           # Webpack config for browser bundle
+├── webpack.browser.cjs           # Webpack config for browser bundle
+└── webpack.tools.cjs             # Webpack config for the tools bundle
 ```
+
+Scripts are plain TypeScript run directly via [`tsx`](https://github.com/privatenumber/tsx) (no separate compile step needed for dev tooling).
 
 ### Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run the Jest test suite |
-| `npm run build` | Build both Node.js (`lib/`) and browser (`dist/`) bundles |
+| `npm test` | Run the Vitest test suite |
+| `npm run build` | Build declarations, transpile, then bundle Node.js (`lib/`) and browser (`dist/`) output |
 | `npm run build:lib` | Build only the Node.js bundle |
 | `npm run build:dist` | Build only the browser bundle |
 | `npm run check:duplicates` | Check for duplicate airport codes in the dataset |
+| `npm run generate:json` | Regenerate `data/airports.json` from `data/airports.csv` |
+| `npm run generate:compressed` | Regenerate `src/airports.data.json` from `data/airports.json` |
+| `npm run benchmark` | Run performance benchmarks against the built browser bundle |
 
 ### Development Workflow
 
 1. **Create a branch** from `main` for your changes
-2. **Make your changes** in `src/index.js` or `data/airports.json`
-3. **Add or update tests** in `tests/index.test.js`
+2. **Make your changes** in `src/index.ts` or `data/airports.json`
+3. **Add or update tests** in `tests/index.test.ts`
 4. **Run tests** to make sure everything passes: `npm test`
 5. **Build** to verify the bundles compile: `npm run build`
 6. **Submit a pull request** against `main`
@@ -516,9 +526,9 @@ If you are adding or updating airport entries:
 
 1. Edit `data/airports.json` directly
 2. Run `npm run check:duplicates` to ensure no duplicate IATA/ICAO codes
-3. Run `node scripts/compress_json.js` to regenerate the compressed dataset
+3. Run `npm run generate:compressed` to regenerate `src/airports.data.json`
 4. Run `npm test` to verify the changes
-5. Submit a pull request with both the JSON and compressed data changes
+5. Submit a pull request with both the JSON and generated data changes
 
 ## Publishing a New Version
 

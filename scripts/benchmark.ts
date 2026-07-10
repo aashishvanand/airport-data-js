@@ -4,10 +4,12 @@
  * 1. First access time (lazy loading / initialization).
  * 2. Search performance (indexed lookups).
  * 3. Memory usage.
- * Usage: node scripts/benchmark.js
+ * Usage: npx tsx scripts/benchmark.ts
  */
 
-const { getAirportByIata } = require('../dist/airport-data.min.js');
+import type { getAirportByIata as GetAirportByIata } from '../src/index';
+
+const { getAirportByIata }: { getAirportByIata: typeof GetAirportByIata } = require('../dist/airport-data.min.js');
 
 console.log('--- Starting Benchmark ---');
 

@@ -16,7 +16,8 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "lib", "dist", "tests"]

@@ -1,6 +1,6 @@
 {
   "name": "airport-data-js",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "type": "commonjs",
   "description": "A comprehensive TypeScript library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Includes LLM tool definitions for AI integration.",
   "main": "lib/index.js",
@@ -26,17 +26,22 @@
     "README.md"
   ],
   "scripts": {
-    "test": "jest --config jest.config.cjs",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build:types": "tsc --emitDeclarationOnly",
+    "build:transpile": "tsc -p tsconfig.build.json",
     "build:lib": "webpack --config webpack.node.cjs",
     "build:dist": "webpack --config webpack.browser.cjs",
     "build:tools": "webpack --config webpack.tools.cjs",
-    "build": "npm run build:types && npm run build:lib && npm run build:dist && npm run build:tools",
-    "check:duplicates": "node scripts/check_duplicates.js"
+    "build": "npm run build:types && npm run build:transpile && npm run build:lib && npm run build:dist && npm run build:tools",
+    "check:duplicates": "tsx scripts/check_duplicates.ts",
+    "generate:json": "tsx scripts/csv_to_json.ts",
+    "generate:compressed": "tsx scripts/compress_json.ts",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "changelog:extract": "tsx scripts/extract_latest_changelog.ts"
   },
   "dependencies": {
-    "jsonpack": "^1.1.5"
+    "pako": "^3.0.1"
   },
   "repository": {
     "type": "git",
@@ -73,26 +78,21 @@
   "overrides": {
     "brace-expansion@1": "^1.1.14",
     "brace-expansion@2": "^2.1.0",
-    "ajv@8": "^8.18.0",
-    "ts-jest": {
-      "@babel/core": "$@babel/core"
-    }
+    "ajv@8": "^8.18.0"
   },
   "devDependencies": {
     "@babel/core": "^8.0.1",
     "@babel/plugin-transform-modules-commonjs": "^8.0.1",
     "@babel/preset-env": "^8.0.2",
-    "@types/jest": "^30.0.0",
-    "babel-jest": "^30.4.1",
+    "@types/node": "^24.1.0",
     "babel-loader": "^10.1.1",
-    "csv-parse": "^7.0.0",
-    "fs-extra": "^11.3.5",
-    "jest": "^30.4.2",
+    "csv-parse": "^7.0.1",
+    "fs-extra": "^11.3.6",
     "path-browserify": "^1.0.1",
-"ts-jest": "^29.4.11",
-    "ts-loader": "^9.6.1",
-    "typescript": "^6.0.3",
-    "webpack": "^5.107.2",
-    "webpack-cli": "^7.0.3"
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10",
+    "webpack": "^5.108.4",
+    "webpack-cli": "^7.2.1"
   }
 }

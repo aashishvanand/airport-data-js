@@ -1,6 +1,5 @@
-import jsonpack from 'jsonpack';
-// @ts-ignore - raw-loader import
-import compressedData from './airports.compressed';
+import { ungzip } from 'pako';
+import airportsPayload from './airports.data.json';
 
 // ============================================================================
 // Types & Interfaces
@@ -241,13 +240,29 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 /**
- * Unpacks the compressed airport data into a usable array.
+ * Decodes a base64 string into raw bytes.
+ * Uses the `atob` global, available in both Node.js (16+) and browsers.
+ * @private
+ */
+function base64ToBytes(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+/**
+ * Decompresses the gzipped airport data into a usable array.
  * Lazy loads the data on first access.
  * @private
  */
 function getData(): Airport[] {
     if (!airportsData) {
-        airportsData = jsonpack.unpack(compressedData) as Airport[];
+        const bytes = base64ToBytes(airportsPayload.gzip);
+        const json = ungzip(bytes, { toText: true } as const);
+        airportsData = JSON.parse(json) as Airport[];
     }
     return airportsData;
 }

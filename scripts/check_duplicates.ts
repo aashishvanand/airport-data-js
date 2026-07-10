@@ -1,21 +1,22 @@
 /**
  * Checks for duplicate airport codes in the compressed data.
  * Validates uniqueness of IATA and ICAO codes.
- * Usage: node scripts/check_duplicates.js
+ * Usage: npx tsx scripts/check_duplicates.ts
  */
 
-const fs = require('fs');
-const path = require('path');
-const jsonpack = require('jsonpack');
+import fs from 'node:fs';
+import path from 'node:path';
+import { gunzipSync } from 'node:zlib';
+import type { Airport } from '../src/index';
 
 console.log('🔍 Checking for duplicate airport codes...\n');
 
-const compressedFilePath = path.join(__dirname, '../src', 'airports.compressed');
-const compressedData = fs.readFileSync(compressedFilePath, 'utf8');
-const airportsData = jsonpack.unpack(compressedData);
+const dataFilePath = path.join(__dirname, '../src', 'airports.data.json');
+const { gzip } = JSON.parse(fs.readFileSync(dataFilePath, 'utf8')) as { gzip: string };
+const airportsData = JSON.parse(gunzipSync(Buffer.from(gzip, 'base64')).toString('utf8')) as Airport[];
 
-const iataCounts = {};
-const icaoCounts = {};
+const iataCounts: Record<string, number> = {};
+const icaoCounts: Record<string, number> = {};
 
 airportsData.forEach(airport => {
     if (airport.iata) {
@@ -26,8 +27,8 @@ airportsData.forEach(airport => {
     }
 });
 
-const duplicateIata = Object.entries(iataCounts).filter(([code, count]) => count > 1);
-const duplicateIcao = Object.entries(icaoCounts).filter(([code, count]) => count > 1);
+const duplicateIata = Object.entries(iataCounts).filter(([, count]) => count > 1);
+const duplicateIcao = Object.entries(icaoCounts).filter(([, count]) => count > 1);
 
 let hasErrors = false;
 
