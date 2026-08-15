@@ -39,3 +39,10 @@ dist/
 # Cloudflare
 .wrangler/
 .dev.vars
+
+.tsbuild 
+data/
+data_source/
+lib/
+
+.claude/

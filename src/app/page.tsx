@@ -186,19 +186,20 @@ export default function UpdatedAirportSearch() {
     setActiveTab(v);
   }, []);
 
-  // Memoized derived values to avoid recomputation on every render
-  const hasCoordinates = useMemo(() => results.some(a => a.latitude && a.longitude), [results]);
+  // Only the displayed slice is ever rendered (cards or map markers), so derive
+  // everything from it instead of the full (potentially huge) results array.
+  const displayedResults = useMemo(() => results.slice(0, 20), [results]);
+
+  const hasCoordinates = useMemo(() => displayedResults.some(a => a.latitude && a.longitude), [displayedResults]);
 
   const mapCenter = useMemo<[number, number]>(() => {
-    if (results.length > 0 && results[0].latitude && results[0].longitude) {
-      return [Number(results[0].latitude), Number(results[0].longitude)];
+    if (displayedResults.length > 0 && displayedResults[0].latitude && displayedResults[0].longitude) {
+      return [Number(displayedResults[0].latitude), Number(displayedResults[0].longitude)];
     }
     return [20, 0];
-  }, [results]);
+  }, [displayedResults]);
 
   const mapZoom = useMemo(() => results.length === 1 ? 12 : 3, [results.length]);
-
-  const displayedResults = useMemo(() => results.slice(0, 20), [results]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -218,7 +219,7 @@ export default function UpdatedAirportSearch() {
                       <MapComponent
                         center={mapCenter}
                         zoom={mapZoom}
-                        markers={results}
+                        markers={displayedResults}
                       />
                     </Box>
                   )}

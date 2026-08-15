@@ -33,7 +33,10 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.clarity.ms",
+              // 'unsafe-inline' is required by next-themes' pre-hydration script that sets
+              // the theme class before paint (no nonce plumbing available here); 'unsafe-eval'
+              // isn't needed at runtime and has been dropped.
+              "script-src 'self' 'unsafe-inline' https://www.clarity.ms",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://unpkg.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org",
               "font-src 'self'",

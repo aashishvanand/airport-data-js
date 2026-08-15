@@ -22,8 +22,15 @@ const linkTypes = [
     { key: 'flightaware_url', label: 'FlightAware', icon: <FlightIcon fontSize="small" /> }
 ];
 
+// Data-sourced URLs must be validated before use as an href — a javascript:/data: value
+// from the dataset would otherwise execute in the viewer's context on click.
+const isSafeUrl = (url: string) => /^https?:\/\//i.test(url);
+
 export default React.memo(function ExternalLinks({ airport, extraLinks = {} }: ExternalLinksProps) {
-    const hasLinks = linkTypes.some(({ key }) => airport[key as keyof Airport] || extraLinks[key.replace('_url', '')]);
+    const hasLinks = linkTypes.some(({ key }) => {
+        const url = airport[key as keyof Airport] || extraLinks[key.replace('_url', '')];
+        return url && isSafeUrl(url as string);
+    });
 
     if (!hasLinks) return null;
 
@@ -34,7 +41,8 @@ export default React.memo(function ExternalLinks({ airport, extraLinks = {} }: E
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {linkTypes.map(({ key, label, icon }) => {
-                    const url = airport[key as keyof Airport] || extraLinks[key.replace('_url', '')];
+                    const rawUrl = airport[key as keyof Airport] || extraLinks[key.replace('_url', '')];
+                    const url = rawUrl && isSafeUrl(rawUrl as string) ? rawUrl : null;
                     return url ? (
                         <Chip
                             key={key}

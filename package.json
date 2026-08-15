@@ -9,27 +9,27 @@
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.7",
-    "@mui/material": "^7.3.7",
-    "airport-data-js": "^3.0.1",
+    "@mui/icons-material": "^9.3.1",
+    "@mui/material": "^9.3.1",
+    "airport-data-js": "^3.1.0",
     "leaflet": "^1.9.4",
     "next-themes": "^0.4.6",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-globe.gl": "^2.37.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-globe.gl": "^2.38.0",
     "react-leaflet": "^5.0.0",
     "react-microsoft-clarity": "^2.0.0",
-    "three": "^0.182.0",
-    "vinext": "^0.0.26"
+    "three": "^0.185.1",
+    "vinext": "^1.0.0-beta.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.26.1",
-    "@types/leaflet": "^1.9.21",
-    "@types/node": "^25.0.10",
-    "@vitejs/plugin-rsc": "^0.5.21",
-    "eslint": "^9.39.2",
-    "vite": "^7.3.1",
-    "wrangler": "^4.71.0"
+    "@cloudflare/vite-plugin": "^1.52.1",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^26.2.0",
+    "@vitejs/plugin-rsc": "^0.5.34",
+    "eslint": "^10.8.1",
+    "vite": "^8.2.1",
+    "wrangler": "^4.123.0"
   },
   "scripts": {
     "postinstall": "node scripts/patch-commonjs-plugin.mjs",
