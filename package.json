@@ -26,6 +26,7 @@
     "@cloudflare/vite-plugin": "^1.52.1",
     "@types/leaflet": "^1.9.22",
     "@types/node": "^26.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
     "@vitejs/plugin-rsc": "^0.5.34",
     "eslint": "^10.8.1",
     "vite": "^8.2.1",
