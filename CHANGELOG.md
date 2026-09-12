@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### 🗺️ Data updates
+
+- **PBI → DJT** — Palm Beach International Airport's IATA/ICAO codes changed to `DJT`/`KDJT` (now "President Donald J. Trump International Airport"). Added as a new record; the original `PBI`/`KPBI` record is kept as a legacy alias so existing lookups keep working, with its name and website updated to match the airport's current branding. ([#164](https://github.com/aashishvanand/airport-data-js/issues/164))
+- **PHH** — corrected: this IATA code was reassigned from Phan Thiet Airport to Pokhara International Airport (`VNPR`, Nepal); the record had a stale name, country, coordinates and timezone from the previous holder
+- **AVR** — corrected: this IATA code was reassigned from Alverca Airport to Amravati Airport (`VAAM`, India); the record had a stale name, country, coordinates and timezone from the previous holder
+- **CSW** — added: Cabo San Lucas International Airport, Mexico (`MMSL`). The dataset previously carried a broken record under IATA `CSL` that mixed this airport's ICAO code and Wikipedia link with an unrelated US Army heliport's name; that record has been replaced
+- **LSG** — added: Leshan Airport, China
+- **BFY** — added: Bengbu Tenghu Airport, China (`ZSBA`)
+- **TVT** — added: Tashkent-Khumo International Airport, Uzbekistan (`UZTP`)
+
+### 🐛 Fixes
+
+- **`elevation_ft` corruption on 503 airports** — a stale join with flightradar24's internal airport ID had overwritten `elevation_ft` with that ID instead of the real elevation (e.g. `ABQ` showed `56992` ft instead of `5,355` ft). All 503 affected records restored from OurAirports/live data; 502 of the 503 corrupted values matched flightradar24's ID exactly, confirming the root cause.
+
 ## [3.1.0] - 2026-04-03
 
 ### 🆕 New Features
