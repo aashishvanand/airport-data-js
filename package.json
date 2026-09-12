@@ -41,7 +41,7 @@
     "changelog:extract": "tsx scripts/extract_latest_changelog.ts"
   },
   "dependencies": {
-    "pako": "^3.0.1"
+    "pako": "^3.0.2"
   },
   "repository": {
     "type": "git",
@@ -83,18 +83,18 @@
     "postcss": "^8.5.18"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.1",
+    "@babel/core": "^8.0.5",
     "@babel/plugin-transform-modules-commonjs": "^8.0.1",
-    "@babel/preset-env": "^8.0.2",
+    "@babel/preset-env": "^8.0.5",
     "@types/node": "^26.1.1",
     "babel-loader": "^10.1.1",
-    "csv-parse": "^7.0.1",
+    "csv-parse": "^7.0.2",
     "fs-extra": "^11.4.0",
     "path-browserify": "^1.0.1",
-    "tsx": "^4.23.1",
+    "tsx": "^4.23.13",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10",
-    "webpack": "^5.109.0",
-    "webpack-cli": "^7.2.1"
+    "vitest": "^5.0.0",
+    "webpack": "^5.110.3",
+    "webpack-cli": "^7.2.3"
   }
 }

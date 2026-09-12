@@ -32,18 +32,19 @@ Each airport object contains the following fields:
 {
   iata: "SIN",                    // 3-letter IATA code
   icao: "WSSS",                   // 4-letter ICAO code
-  time: "Asia/Singapore",         // Timezone identifier
+  time: "Asia/Singapore",         // IANA timezone identifier
+  utc: 8,                         // UTC offset in hours (DST-aware snapshot, not a fixed standard offset)
   country_code: "SG",             // 2-letter country code
   continent: "AS",                // 2-letter continent code (AS, EU, NA, SA, AF, OC, AN)
   airport: "Singapore Changi Airport",  // Airport name
-  latitude: "1.35019",            // Latitude coordinate
-  longitude: "103.994003",        // Longitude coordinate
-  elevation: "22",                // Elevation in feet
+  latitude: 1.35019,              // Latitude in decimal degrees
+  longitude: 103.994003,          // Longitude in decimal degrees
+  elevation_ft: 22,               // Elevation in feet, or null when unknown
   type: "large_airport",          // Airport type
-  scheduled_service: true,        // Has scheduled commercial service
+  scheduled_service: "TRUE",      // "TRUE" or "FALSE" (has scheduled commercial service)
   wikipedia: "https://en.wikipedia.org/wiki/Singapore_Changi_Airport",
   website: "https://www.changiairport.com",
-  runway_length: "13200",         // Longest runway in feet
+  runway_length: 13200,           // Longest runway in feet, or null when unknown
   flightradar24_url: "https://www.flightradar24.com/airport/SIN",
   radarbox_url: "https://www.radarbox.com/airport/WSSS",
   flightaware_url: "https://www.flightaware.com/live/airport/WSSS"
@@ -506,7 +507,7 @@ Scripts are plain TypeScript run directly via [`tsx`](https://github.com/private
 | `npm run build` | Build declarations, transpile, then bundle Node.js (`lib/`) and browser (`dist/`) output |
 | `npm run build:lib` | Build only the Node.js bundle |
 | `npm run build:dist` | Build only the browser bundle |
-| `npm run check:duplicates` | Check for duplicate airport codes in the dataset |
+| `npm run check:duplicates` | Validate the dataset: duplicate IATA/ICAO codes, coordinate ranges, continent/type enums, country code format, `scheduled_service`/`utc` types, plus a data-completeness report |
 | `npm run generate:json` | Regenerate `data/airports.json` from `data/airports.csv` |
 | `npm run generate:compressed` | Regenerate `src/airports.data.json` from `data/airports.json` |
 | `npm run benchmark` | Run performance benchmarks against the built browser bundle |
@@ -525,8 +526,8 @@ Scripts are plain TypeScript run directly via [`tsx`](https://github.com/private
 If you are adding or updating airport entries:
 
 1. Edit `data/airports.json` directly
-2. Run `npm run check:duplicates` to ensure no duplicate IATA/ICAO codes
-3. Run `npm run generate:compressed` to regenerate `src/airports.data.json`
+2. Run `npm run generate:compressed` to regenerate `src/airports.data.json`
+3. Run `npm run check:duplicates` to validate the dataset (it reads the compressed file)
 4. Run `npm test` to verify the changes
 5. Submit a pull request with both the JSON and generated data changes
 

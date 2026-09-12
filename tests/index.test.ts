@@ -143,28 +143,16 @@ describe('Airport Data Library (Live Data)', () => {
         });
 
         test('should filter by scheduled service availability', async () => {
-            const airportsWithService: Airport[] = await findAirports({ has_scheduled_service: true });
-            const airportsWithoutService: Airport[] = await findAirports({ has_scheduled_service: false });
+            const airportsWithService: Airport[] = await findAirports({ country_code: 'GB', has_scheduled_service: true });
+            const airportsWithoutService: Airport[] = await findAirports({ country_code: 'GB', has_scheduled_service: false });
 
-            expect(airportsWithService.length + airportsWithoutService.length).toBeGreaterThan(0);
+            // Both groups must be non-empty: data uses "TRUE"/"FALSE" strings, so a
+            // regression to matching only lowercase "yes" would leave one of these empty.
+            expect(airportsWithService.length).toBeGreaterThan(0);
+            expect(airportsWithoutService.length).toBeGreaterThan(0);
 
-            if (airportsWithService.length > 0) {
-                expect(airportsWithService.every((a: Airport) => {
-                    const scheduled = typeof a.scheduled_service === 'string'
-                        ? a.scheduled_service.toLowerCase() === 'yes'
-                        : a.scheduled_service === true;
-                    return scheduled;
-                })).toBe(true);
-            }
-
-            if (airportsWithoutService.length > 0) {
-                expect(airportsWithoutService.every((a: Airport) => {
-                    const scheduled = typeof a.scheduled_service === 'string'
-                        ? a.scheduled_service.toLowerCase() === 'yes'
-                        : a.scheduled_service === true;
-                    return !scheduled;
-                })).toBe(true);
-            }
+            expect(airportsWithService.every((a: Airport) => a.scheduled_service === 'TRUE')).toBe(true);
+            expect(airportsWithoutService.every((a: Airport) => a.scheduled_service === 'FALSE')).toBe(true);
         });
     });
 
@@ -212,6 +200,10 @@ describe('Airport Data Library (Live Data)', () => {
             expect(stats.total).toBeGreaterThan(1000);
             expect(stats.byType).toHaveProperty('large_airport');
             expect(stats.byType.large_airport).toBeGreaterThan(0);
+            // Regression guard: withScheduledService/averageElevation both used to be
+            // stuck reading fields that never matched the actual data shape.
+            expect(stats.withScheduledService).toBeGreaterThan(0);
+            expect(stats.averageElevation).toBeGreaterThan(0);
         });
 
         test('should throw error for invalid country code', async () => {
@@ -228,6 +220,7 @@ describe('Airport Data Library (Live Data)', () => {
             expect(stats).toHaveProperty('withScheduledService');
             expect(stats.total).toBeGreaterThan(100);
             expect(Object.keys(stats.byCountry).length).toBeGreaterThan(10);
+            expect(stats.withScheduledService).toBeGreaterThan(0);
         });
 
         test('should include country breakdown', async () => {
@@ -244,19 +237,19 @@ describe('Airport Data Library (Live Data)', () => {
             expect(airports.length).toBeLessThanOrEqual(5);
             expect(airports.length).toBeGreaterThan(0);
             for (let i = 0; i < airports.length - 1; i++) {
-                const runway1 = parseInt(airports[i].runway_length || '0', 10) || 0;
-                const runway2 = parseInt(airports[i + 1].runway_length || '0', 10) || 0;
-                expect(runway1).toBeGreaterThanOrEqual(runway2);
+                expect(airports[i].runway_length ?? 0).toBeGreaterThanOrEqual(airports[i + 1].runway_length ?? 0);
             }
         });
 
         test('should return top airports by elevation', async () => {
             const airports: Airport[] = await getLargestAirportsByContinent('SA', 5, 'elevation');
             expect(airports.length).toBeLessThanOrEqual(5);
+            // A regression to reading the phantom `elevation` field (data only has
+            // `elevation_ft`) would make every comparison 0 >= 0 and never fail here,
+            // so also assert the top result actually has a populated elevation.
+            expect(airports[0].elevation_ft).not.toBeNull();
             for (let i = 0; i < airports.length - 1; i++) {
-                const elev1 = parseInt(airports[i].elevation, 10) || 0;
-                const elev2 = parseInt(airports[i + 1].elevation, 10) || 0;
-                expect(elev1).toBeGreaterThanOrEqual(elev2);
+                expect(airports[i].elevation_ft ?? 0).toBeGreaterThanOrEqual(airports[i + 1].elevation_ft ?? 0);
             }
         });
 
