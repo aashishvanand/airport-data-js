@@ -33,12 +33,14 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // 'unsafe-inline' is required by next-themes' pre-hydration script that sets
-              // the theme class before paint (no nonce plumbing available here); 'unsafe-eval'
-              // isn't needed at runtime and has been dropped.
+              // 'unsafe-inline' is required by MUI's InitColorSchemeScript, which sets the
+              // color-scheme attribute before hydration to avoid a dark/light flash (no nonce
+              // plumbing available here); 'unsafe-eval' isn't needed at runtime and has been dropped.
               "script-src 'self' 'unsafe-inline' https://www.clarity.ms",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://unpkg.com https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org",
+              // unpkg.com: Globe3D's earth/topology textures. server.arcgisonline.com: Map's
+              // light/dark basemap tiles (Esri's free, no-API-key basemap service).
+              "img-src 'self' data: blob: https://unpkg.com https://server.arcgisonline.com",
               "font-src 'self'",
               "connect-src 'self' https://www.clarity.ms https://*.clarity.ms",
               "frame-src 'none'",

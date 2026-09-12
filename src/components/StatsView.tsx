@@ -6,7 +6,6 @@ import {
     Card, CardContent, MenuItem, Select, FormControl, InputLabel
 } from '@mui/material';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import PublicIcon from '@mui/icons-material/Public';
 import { getAirportStatsByCountry, getAirportStatsByContinent } from 'airport-data-js';
 
 export default function StatsView() {

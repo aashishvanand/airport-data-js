@@ -20,19 +20,20 @@ interface AirportCardProps {
 
 export default React.memo(function AirportCard({ airport, extraLinks }: AirportCardProps) {
     return (
-        <Card sx={{
+        <Card sx={(theme) => ({
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
                 transform: 'translateY(-4px)',
-                boxShadow: (theme) => theme.palette.mode === 'dark'
-                    ? '0 12px 24px -8px rgba(0, 0, 0, 0.6)'
-                    : '0 12px 24px -8px rgba(0, 0, 0, 0.15)',
+                boxShadow: '0 12px 24px -8px rgba(0, 0, 0, 0.15)',
+                ...theme.applyStyles('dark', {
+                    boxShadow: '0 12px 24px -8px rgba(0, 0, 0, 0.6)',
+                }),
                 borderColor: 'primary.main',
             }
-        }}>
+        })}>
             <CardContent sx={{ flexGrow: 1, p: 3 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                     <Box>
@@ -90,7 +91,7 @@ export default React.memo(function AirportCard({ airport, extraLinks }: AirportC
 
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
                     <Box>
-                        <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={0.5}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             <AccessTimeIcon sx={{ fontSize: '0.9rem' }} /> Timezone
                         </Typography>
                         <Typography variant="body2" fontWeight={500}>
@@ -99,7 +100,7 @@ export default React.memo(function AirportCard({ airport, extraLinks }: AirportC
                     </Box>
 
                     <Box>
-                        <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={0.5}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             <StraightIcon sx={{ fontSize: '0.9rem', transform: 'rotate(90deg)' }} /> Runway
                         </Typography>
                         <Typography variant="body2" fontWeight={500}>
@@ -108,15 +109,15 @@ export default React.memo(function AirportCard({ airport, extraLinks }: AirportC
                     </Box>
 
                     <Box>
-                        <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={0.5}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             <TerrainIcon sx={{ fontSize: '0.9rem' }} /> Elevation
                         </Typography>
                         <Typography variant="body2" fontWeight={500}>
-                            {airport.elevation ? `${airport.elevation} ft` : 'N/A'}
+                            {airport.elevation_ft ? `${airport.elevation_ft} ft` : 'N/A'}
                         </Typography>
                     </Box>
                     <Box>
-                        <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={0.5}>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                             <LocationOnIcon sx={{ fontSize: '0.9rem' }} /> Coordinates
                         </Typography>
                         <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'monospace' }}>

@@ -132,7 +132,7 @@ export default function LargestAirportsView() {
                                 <TableCell>{[airport.city, airport.country_code].filter(Boolean).join(', ')}</TableCell>
                                 <TableCell align="right">
                                     <Typography fontWeight={600} color="primary">
-                                        {sortBy === 'runway' ? `${airport.runway_length} ft` : `${airport.elevation} ft`}
+                                        {sortBy === 'runway' ? `${airport.runway_length} ft` : `${airport.elevation_ft} ft`}
                                     </Typography>
                                 </TableCell>
                             </TableRow>

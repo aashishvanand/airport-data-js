@@ -1,7 +1,6 @@
 'use client';
 
-import { createTheme, ThemeOptions, alpha } from '@mui/material/styles';
-import { PaletteMode } from '@mui/material';
+import { createTheme, alpha } from '@mui/material/styles';
 
 // Premium Color Palettes
 const lightPalette = {
@@ -58,13 +57,20 @@ const darkPalette = {
     },
 };
 
-const getDesignTokens = (mode: PaletteMode): ThemeOptions => ({
-    palette: {
-        mode,
-        ...(mode === 'light' ? lightPalette : darkPalette),
+// A single theme instance serves both color schemes via CSS variables — the browser
+// switches which set of variables applies (through the data-mui-color-scheme attribute)
+// with no JS re-render and no light-frame flash before hydration, unlike the previous
+// approach of building a separate theme per `mode` in React state.
+const theme = createTheme({
+    cssVariables: {
+        colorSchemeSelector: 'data-mui-color-scheme',
+    },
+    colorSchemes: {
+        light: { palette: lightPalette },
+        dark: { palette: darkPalette },
     },
     typography: {
-        fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+        fontFamily: 'var(--font-inter), "Roboto", "Helvetica", "Arial", sans-serif',
         h1: { fontWeight: 800, letterSpacing: '-0.02em' },
         h2: { fontWeight: 700, letterSpacing: '-0.01em' },
         h3: { fontWeight: 700, letterSpacing: '-0.01em' },
@@ -81,7 +87,10 @@ const getDesignTokens = (mode: PaletteMode): ThemeOptions => ({
         MuiCssBaseline: {
             styleOverrides: (theme) => ({
                 body: {
-                    scrollbarColor: mode === 'dark' ? '#334155 #0f172a' : '#cbd5e1 #f1f5f9',
+                    scrollbarColor: '#cbd5e1 #f1f5f9',
+                    ...theme.applyStyles('dark', {
+                        scrollbarColor: '#334155 #0f172a',
+                    }),
                     '&::-webkit-scrollbar, & *::-webkit-scrollbar': {
                         backgroundColor: 'transparent',
                         width: '8px',
@@ -89,9 +98,13 @@ const getDesignTokens = (mode: PaletteMode): ThemeOptions => ({
                     },
                     '&::-webkit-scrollbar-thumb, & *::-webkit-scrollbar-thumb': {
                         borderRadius: 8,
-                        backgroundColor: mode === 'dark' ? '#334155' : '#cbd5e1',
+                        backgroundColor: '#cbd5e1',
                         minHeight: 24,
-                        border: `2px solid ${mode === 'dark' ? '#0f172a' : '#f1f5f9'}`,
+                        border: '2px solid #f1f5f9',
+                        ...theme.applyStyles('dark', {
+                            backgroundColor: '#334155',
+                            border: '2px solid #0f172a',
+                        }),
                     },
                 },
             }),
@@ -115,15 +128,17 @@ const getDesignTokens = (mode: PaletteMode): ThemeOptions => ({
         },
         MuiCard: {
             styleOverrides: {
-                root: {
+                root: (({ theme }) => ({
                     borderRadius: 20,
                     backgroundImage: 'none',
                     backdropFilter: 'blur(12px)',
-                    border: `1px solid ${mode === 'dark' ? alpha('#fff', 0.08) : alpha('#000', 0.04)}`,
-                    boxShadow: mode === 'dark'
-                        ? '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)'
-                        : '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
-                },
+                    border: `1px solid ${alpha('#000', 0.04)}`,
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+                    ...theme.applyStyles('dark', {
+                        border: `1px solid ${alpha('#fff', 0.08)}`,
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)',
+                    }),
+                })) as any,
             },
         },
         MuiPaper: {
@@ -148,18 +163,21 @@ const getDesignTokens = (mode: PaletteMode): ThemeOptions => ({
         },
         MuiTextField: {
             styleOverrides: {
-                root: {
+                root: (({ theme }) => ({
                     '& .MuiOutlinedInput-root': {
                         borderRadius: 12,
                         transition: 'all 0.2s',
                         '&.Mui-focused': {
-                            boxShadow: `0 0 0 2px ${mode === 'dark' ? alpha('#3b82f6', 0.2) : alpha('#2563eb', 0.2)}`,
+                            boxShadow: `0 0 0 2px ${alpha('#2563eb', 0.2)}`,
+                            ...theme.applyStyles('dark', {
+                                boxShadow: `0 0 0 2px ${alpha('#3b82f6', 0.2)}`,
+                            }),
                         }
                     },
-                },
+                })) as any,
             },
         },
     },
 });
 
-export default getDesignTokens;
+export default theme;

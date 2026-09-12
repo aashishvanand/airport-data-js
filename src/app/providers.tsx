@@ -1,58 +1,25 @@
 'use client'
-import { createContext, useContext, useEffect, useState, useMemo } from 'react'
-import { ThemeProvider as NextThemesProvider } from 'next-themes'
-import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles'
+import { ThemeProvider as MuiThemeProvider, useColorScheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import { PaletteMode } from '@mui/material'
-import getDesignTokens from '../theme/theme'
-
-const ColorModeContext = createContext({ toggleColorMode: () => { } })
+import theme from '../theme/theme'
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<PaletteMode>('light')
-
-  const colorMode = useMemo(
-    () => ({
-      toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
-      },
-    }),
-    [],
-  );
-
-  const theme = useMemo(() => createTheme(getDesignTokens(mode)), [mode]);
-
-  useEffect(() => {
-    try {
-      const storedTheme = localStorage.getItem('theme') as PaletteMode | null
-      if (storedTheme) {
-        setMode(storedTheme)
-      } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        setMode('dark')
-      }
-    } catch {
-      // localStorage may be unavailable (private browsing, storage disabled, etc.)
-    }
-  }, [])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('theme', mode)
-    } catch {
-      // localStorage may be unavailable
-    }
-  }, [mode])
-
   return (
-    <ColorModeContext.Provider value={colorMode}>
-      <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
-        <MuiThemeProvider theme={theme}>
-          <CssBaseline />
-          {children}
-        </MuiThemeProvider>
-      </NextThemesProvider>
-    </ColorModeContext.Provider>
+    <MuiThemeProvider theme={theme} defaultMode="system">
+      <CssBaseline enableColorScheme />
+      {children}
+    </MuiThemeProvider>
   )
 }
 
-export const useColorMode = () => useContext(ColorModeContext)
+// Thin wrapper over MUI's own color-scheme hook, kept so callers don't need to know
+// the mode is 'system' | 'light' | 'dark' under the hood — toggleColorMode just flips
+// between light and dark regardless of which one 'system' currently resolves to.
+export function useColorMode() {
+  const { mode, systemMode, setMode } = useColorScheme()
+  const resolvedMode = mode === 'system' ? systemMode : mode
+  return {
+    mode: resolvedMode,
+    toggleColorMode: () => setMode(resolvedMode === 'dark' ? 'light' : 'dark'),
+  }
+}

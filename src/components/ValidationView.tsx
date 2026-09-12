@@ -26,7 +26,7 @@ export default function ValidationView() {
                 // @ts-ignore
                 const result = await validateIataCode(iataInput.toUpperCase());
                 if (!cancelled) setIataStatus(result);
-            } catch (e) {
+            } catch {
                 if (!cancelled) setIataStatus(false);
             }
         }, 300);
@@ -50,7 +50,7 @@ export default function ValidationView() {
                 // @ts-ignore
                 const result = await validateIcaoCode(icaoInput.toUpperCase());
                 if (!cancelled) setIcaoStatus(result);
-            } catch (e) {
+            } catch {
                 if (!cancelled) setIcaoStatus(false);
             }
         }, 300);

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
 import {
   AppBar,
@@ -13,7 +13,6 @@ import {
   Alert,
   Tabs,
   Tab,
-  Paper,
   Fade,
   CircularProgress
 } from '@mui/material';
@@ -186,6 +185,23 @@ export default function UpdatedAirportSearch() {
     setActiveTab(v);
   }, []);
 
+  // Deep-link support: /?q=MAA (or a 4-letter ICAO code) pre-fills and runs a search,
+  // e.g. from the "Open in interactive search" link on an airport's /[code] page.
+  const initialQuery = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('q')?.toUpperCase() ?? '';
+  }, []);
+  const initialSearchType: SearchType = initialQuery.length === 4 ? 'icao' : 'iata';
+
+  useEffect(() => {
+    if (initialQuery && isValidInput(initialSearchType, initialQuery)) {
+      handleSearch(initialSearchType, initialQuery);
+    }
+    // Intentionally run once on mount only — this seeds state from the URL a user
+    // arrived with, not something that should re-trigger as they interact with the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Only the displayed slice is ever rendered (cards or map markers), so derive
   // everything from it instead of the full (potentially huge) results array.
   const displayedResults = useMemo(() => results.slice(0, 20), [results]);
@@ -207,7 +223,13 @@ export default function UpdatedAirportSearch() {
         return (
           <Fade in={activeTab === 0}>
             <Box>
-              <SearchBar onSearch={handleSearch} loading={loading} isValid={isValidInput} />
+              <SearchBar
+                onSearch={handleSearch}
+                loading={loading}
+                isValid={isValidInput}
+                initialType={initialSearchType}
+                initialQuery={initialQuery}
+              />
 
               {error && <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>}
 
@@ -259,13 +281,16 @@ export default function UpdatedAirportSearch() {
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <AppBar position="sticky" color="default" sx={{
+      <AppBar position="sticky" color="default" sx={(theme) => ({
         backdropFilter: 'blur(20px)',
-        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(15, 23, 42, 0.7)' : 'rgba(255, 255, 255, 0.7)',
+        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+        ...theme.applyStyles('dark', {
+          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+        }),
         borderBottom: '1px solid',
         borderColor: 'divider',
         boxShadow: 'none'
-      }}>
+      })}>
         <Container maxWidth="xl">
           <Toolbar disableGutters>
             <FlightIcon sx={{ mr: 2, color: 'primary.main', fontSize: 32 }} />
@@ -273,7 +298,7 @@ export default function UpdatedAirportSearch() {
               Airport Data
             </Typography>
             <IconButton sx={{ ml: 1 }} onClick={colorMode.toggleColorMode} color="inherit">
-              {theme.palette.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+              {colorMode.mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
             </IconButton>
           </Toolbar>
         </Container>

@@ -11,6 +11,7 @@ export interface Airport {
     time?: string;
     runway_length?: string;
     elevation?: string;
+    elevation_ft?: string;
     scheduled_service?: boolean;
     website?: string;
     wikipedia?: string;

@@ -1,9 +1,16 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, useTheme, Paper } from '@mui/material';
 import { Airport } from '../types';
+import { useColorMode } from '../app/providers';
 import dynamic from 'next/dynamic';
+
+// Leaflet's DivIcon/Polyline render raw SVG whose color attributes can't resolve MUI's
+// CSS-variable references, so mode-dependent colors here are literal hex, mirroring
+// the primary palette values from theme.ts.
+const PRIMARY_LIGHT = '#2563eb';
+const PRIMARY_DARK = '#3b82f6';
 
 // Dynamic import for Leaflet components with explicit typing
 const MapContainer = dynamic(
@@ -66,6 +73,8 @@ const createFlightIcon = async (isDarkMode: boolean) => {
 
 export default React.memo(function MapComponent({ center, zoom, markers, route }: MapComponentProps) {
     const theme = useTheme();
+    const { mode } = useColorMode();
+    const isDark = mode === 'dark';
     const [isMounted, setIsMounted] = useState(false);
     const [flightIcon, setFlightIcon] = useState<any>(null);
 
@@ -79,11 +88,11 @@ export default React.memo(function MapComponent({ center, zoom, markers, route }
     useEffect(() => {
         if (!isMounted) return;
         let cancelled = false;
-        createFlightIcon(theme.palette.mode === 'dark').then((icon) => {
+        createFlightIcon(isDark).then((icon) => {
             if (!cancelled) setFlightIcon(icon);
         });
         return () => { cancelled = true; };
-    }, [isMounted, theme.palette.mode]);
+    }, [isMounted, isDark]);
 
     if (!isMounted) return <Box sx={{ height: 400, bgcolor: 'background.paper', borderRadius: 4 }} />;
 
@@ -99,13 +108,25 @@ export default React.memo(function MapComponent({ center, zoom, markers, route }
                     {/* Programmatically update view instead of destroying/recreating MapContainer via key */}
                     {/* @ts-ignore */}
                     <MapViewUpdater center={center} zoom={zoom} />
-                    {/* @ts-ignore */}
-                    <TileLayer
-                        url={theme.palette.mode === 'dark'
-                            ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-                            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'} // Premium looking map tiles
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    />
+                    {isDark ? (
+                        <>
+                            {/* @ts-ignore */}
+                            <TileLayer
+                                url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                                attribution='&copy; <a href="https://www.esri.com">Esri</a>, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            />
+                            {/* @ts-ignore */}
+                            <TileLayer
+                                url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+                            />
+                        </>
+                    ) : (
+                        // @ts-ignore
+                        <TileLayer
+                            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+                            attribution='&copy; <a href="https://www.esri.com">Esri</a>, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        />
+                    )}
 
                     {markers.map((airport, index) => (
                         airport.latitude && airport.longitude ? (
@@ -131,7 +152,7 @@ export default React.memo(function MapComponent({ center, zoom, markers, route }
                         // @ts-ignore
                         <Polyline
                             positions={route}
-                            color={theme.palette.primary.main}
+                            color={isDark ? PRIMARY_DARK : PRIMARY_LIGHT}
                             weight={4}
                             opacity={0.7}
                             dashArray="10, 10"

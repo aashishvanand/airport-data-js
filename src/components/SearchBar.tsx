@@ -21,11 +21,13 @@ interface SearchBarProps {
     onSearch: (type: SearchType, query: string) => void;
     loading: boolean;
     isValid: (type: SearchType, query: string) => boolean;
+    initialType?: SearchType;
+    initialQuery?: string;
 }
 
-export default React.memo(function SearchBar({ onSearch, loading, isValid }: SearchBarProps) {
-    const [searchType, setSearchType] = useState<SearchType>('iata');
-    const [query, setQuery] = useState('');
+export default React.memo(function SearchBar({ onSearch, loading, isValid, initialType, initialQuery }: SearchBarProps) {
+    const [searchType, setSearchType] = useState<SearchType>(initialType ?? 'iata');
+    const [query, setQuery] = useState(initialQuery ?? '');
     const [suggestions, setSuggestions] = useState<Airport[]>([]);
 
     // Debounced autocomplete with stale-request cancellation
@@ -168,13 +170,15 @@ export default React.memo(function SearchBar({ onSearch, loading, isValid }: Sea
                                 onKeyDown={handleKeyDown}
                                 error={query.length > 0 && !isValid(searchType, query)}
                                 helperText={query.length > 0 && !isValid(searchType, query) ? `Invalid format` : getHelperText(searchType)}
-                                InputProps={{
-                                    ...params.InputProps,
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon color="action" />
-                                        </InputAdornment>
-                                    )
+                                slotProps={{
+                                    input: {
+                                        ...params.InputProps,
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SearchIcon color="action" />
+                                            </InputAdornment>
+                                        )
+                                    }
                                 }}
                             />
                         )}
@@ -189,12 +193,14 @@ export default React.memo(function SearchBar({ onSearch, loading, isValid }: Sea
                         onKeyDown={handleKeyDown}
                         error={query.length > 0 && !isValid(searchType, query)}
                         helperText={query.length > 0 && !isValid(searchType, query) ? `Invalid format` : getHelperText(searchType)}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon color="action" />
-                                </InputAdornment>
-                            )
+                        slotProps={{
+                            input: {
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon color="action" />
+                                    </InputAdornment>
+                                )
+                            }
                         }}
                     />
                 )}

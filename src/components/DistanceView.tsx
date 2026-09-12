@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Paper, Typography, Box, TextField, Button, Grid, Alert } from '@mui/material';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Paper, Typography, Box, TextField, Button, Grid, Alert, ToggleButton, ToggleButtonGroup } from '@mui/material';
 import MapIcon from '@mui/icons-material/Map';
+import PublicIcon from '@mui/icons-material/Public';
 import ConnectingAirportsIcon from '@mui/icons-material/ConnectingAirports';
 import { calculateDistance, getAirportByIata, getAirportByIcao } from 'airport-data-js';
 import { Airport } from '../types';
@@ -15,6 +16,12 @@ const MapComponent = dynamic(() => import('./Map'), {
     loading: () => <Box sx={{ height: 400, bgcolor: 'background.paper', borderRadius: 4 }} />
 });
 
+// Lazy-load Globe3D — user may never toggle to 2D view
+const Globe3D = dynamic(() => import('./Globe3D'), {
+    ssr: false,
+    loading: () => <Box sx={{ display: 'flex', justifyContent: 'center', py: 8, height: '70vh', alignItems: 'center' }}>Loading Globe...</Box>
+});
+
 export default function DistanceView() {
     const [code1, setCode1] = useState('');
     const [code2, setCode2] = useState('');
@@ -22,6 +29,11 @@ export default function DistanceView() {
     const [airport1, setAirport1] = useState<Airport | null>(null);
     const [airport2, setAirport2] = useState<Airport | null>(null);
     const [error, setError] = useState('');
+    const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
+
+    const handleViewModeChange = useCallback((_: React.MouseEvent<HTMLElement>, newMode: '2d' | '3d' | null) => {
+        if (newMode) setViewMode(newMode);
+    }, []);
 
     const handleCalculate = async () => {
         setError('');
@@ -116,15 +128,40 @@ export default function DistanceView() {
                 )}
 
                 {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+
+                {airport1 && airport2 && (
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'center' }}>
+                        <ToggleButtonGroup
+                            value={viewMode}
+                            exclusive
+                            onChange={handleViewModeChange}
+                            aria-label="view mode"
+                        >
+                            <ToggleButton value="3d" aria-label="3d globe">
+                                <PublicIcon sx={{ mr: 1 }} /> 3D Globe
+                            </ToggleButton>
+                            <ToggleButton value="2d" aria-label="2d map">
+                                <MapIcon sx={{ mr: 1 }} /> 2D Map
+                            </ToggleButton>
+                        </ToggleButtonGroup>
+                    </Box>
+                )}
             </Paper>
 
             {airport1 && airport2 && (
-                <MapComponent
-                    center={mapCenter}
-                    zoom={2}
-                    markers={mapMarkers}
-                    route={mapRoute}
-                />
+                viewMode === '3d' ? (
+                    <Globe3D
+                        airports={mapMarkers}
+                        route={mapRoute ?? []}
+                    />
+                ) : (
+                    <MapComponent
+                        center={mapCenter}
+                        zoom={2}
+                        markers={mapMarkers}
+                        route={mapRoute}
+                    />
+                )
             )}
         </Box>
     );
