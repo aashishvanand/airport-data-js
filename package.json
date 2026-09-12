@@ -80,7 +80,9 @@
     "brace-expansion@2": "^2.1.0",
     "ajv@8": "^8.18.0",
     "fast-uri": "^3.1.4",
-    "postcss": "^8.5.18"
+    "postcss": "^8.5.18",
+    "browserslist": "^4.28.7",
+    "baseline-browser-mapping": "^2.11.0"
   },
   "devDependencies": {
     "@babel/core": "^8.0.5",
