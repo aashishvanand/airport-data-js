@@ -2,7 +2,7 @@ const path = require('path');
 
 module.exports = {
     target: 'web',
-    entry: './src/index.ts',
+    entry: './.tsbuild/index.js',
     mode: 'production',
     output: {
         filename: 'airport-data.min.js',
@@ -12,16 +12,8 @@ module.exports = {
         umdNamedDefine: true,
         globalObject: 'this'
     },
-    resolve: {
-        extensions: ['.ts', '.js', '.json'],
-    },
     module: {
         rules: [
-            {
-                test: /\.ts$/,
-                exclude: /node_modules/,
-                use: 'ts-loader',
-            },
             {
                 test: /\.js$/,
                 exclude: /node_modules/,
@@ -31,10 +23,6 @@ module.exports = {
                         presets: ['@babel/preset-env']
                     }
                 }
-            },
-            {
-                test: /\.compressed$/,
-                use: 'raw-loader',
             }
         ]
     },
@@ -42,7 +30,7 @@ module.exports = {
         fallback: {
             "fs": false,
             "path": require.resolve("path-browserify")
-         },
-        extensions: ['.ts', '.js', '.json']
+        },
+        extensions: ['.js', '.json']
     }
 };

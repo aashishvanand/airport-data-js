@@ -1,6 +1,5 @@
-import jsonpack from 'jsonpack';
-// @ts-ignore - raw-loader import
-import compressedData from './airports.compressed';
+import { ungzip } from 'pako';
+import airportsPayload from './airports.data.json';
 
 // ============================================================================
 // Types & Interfaces
@@ -23,22 +22,20 @@ export interface Airport {
     icao: string;
     /** IANA timezone identifier (e.g., "Asia/Singapore") */
     time: string;
-    /** UTC offset string (e.g., "+08:00") */
-    utc: string;
+    /** UTC offset in hours (e.g., 8, 5.5, -3.5). A DST-aware snapshot, not a fixed standard offset. */
+    utc: number;
     /** ISO 3166-1 alpha-2 country code (e.g., "SG", "GB", "US") */
     country_code: string;
     /** 2-letter continent code: AF, AN, AS, EU, NA, OC, SA */
     continent: string;
     /** Full airport name (e.g., "Singapore Changi Airport") */
     airport: string;
-    /** Latitude in decimal degrees as a string */
-    latitude: string;
-    /** Longitude in decimal degrees as a string */
-    longitude: string;
-    /** Elevation above sea level in feet (string) */
-    elevation: string;
-    /** Elevation in feet (string, same as elevation) */
-    elevation_ft: string;
+    /** Latitude in decimal degrees */
+    latitude: number;
+    /** Longitude in decimal degrees */
+    longitude: number;
+    /** Elevation above sea level in feet, or null when unknown */
+    elevation_ft: number | null;
     /** Airport classification: "large_airport" | "medium_airport" | "small_airport" | "heliport" | "seaplane_base" | "closed" */
     type: string;
     /** Whether the airport has scheduled commercial service */
@@ -47,8 +44,8 @@ export interface Airport {
     wikipedia?: string;
     /** Airport official website URL */
     website?: string;
-    /** Longest runway length in feet (string) */
-    runway_length?: string;
+    /** Longest runway length in feet, or null when unknown */
+    runway_length?: number | null;
     /** FlightRadar24 tracking URL */
     flightradar24_url?: string;
     /** RadarBox tracking URL */
@@ -88,19 +85,18 @@ export interface AirportFilters {
     iata?: string;
     icao?: string;
     time?: string;
-    utc?: string;
+    utc?: number;
     country_code?: string;
     continent?: string;
     airport?: string;
-    latitude?: string;
-    longitude?: string;
-    elevation_ft?: string;
-    elevation?: string;
+    latitude?: number;
+    longitude?: number;
+    elevation_ft?: number | null;
     type?: string;
     scheduled_service?: boolean | string;
     wikipedia?: string;
     website?: string;
-    runway_length?: string;
+    runway_length?: number | null;
     flightradar24_url?: string;
     radarbox_url?: string;
     flightaware_url?: string;
@@ -241,13 +237,29 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 /**
- * Unpacks the compressed airport data into a usable array.
+ * Decodes a base64 string into raw bytes.
+ * Uses the `atob` global, available in both Node.js (16+) and browsers.
+ * @private
+ */
+function base64ToBytes(base64: string): Uint8Array {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+/**
+ * Decompresses the gzipped airport data into a usable array.
  * Lazy loads the data on first access.
  * @private
  */
 function getData(): Airport[] {
     if (!airportsData) {
-        airportsData = jsonpack.unpack(compressedData) as Airport[];
+        const bytes = base64ToBytes(airportsPayload.gzip);
+        const json = ungzip(bytes, { toText: true } as const);
+        airportsData = JSON.parse(json) as Airport[];
     }
     return airportsData;
 }
@@ -262,12 +274,9 @@ function getGeoData(): GeoEntry[] {
         geoData = [];
         for (let i = 0; i < data.length; i++) {
             const airport = data[i];
-            if (airport.latitude && airport.longitude) {
-                const lat = parseFloat(airport.latitude);
-                const lon = parseFloat(airport.longitude);
-                if (isFinite(lat) && isFinite(lon)) {
-                    geoData.push({ lat, lon, index: i });
-                }
+            const { latitude: lat, longitude: lon } = airport;
+            if (typeof lat === 'number' && typeof lon === 'number' && isFinite(lat) && isFinite(lon)) {
+                geoData.push({ lat, lon, index: i });
             }
         }
     }
@@ -412,6 +421,19 @@ function copyAirports(airports: Airport[]): Airport[] {
 }
 
 /**
+ * Normalizes the `scheduled_service` field (boolean, or "TRUE"/"FALSE"/"yes"/"true" strings) to a boolean.
+ * @private
+ */
+function hasScheduledService(airport: Airport): boolean {
+    const value = airport.scheduled_service;
+    if (typeof value === 'string') {
+        const normalized = value.toLowerCase();
+        return normalized === 'true' || normalized === 'yes';
+    }
+    return value === true;
+}
+
+/**
  * Validates a string against a regular expression and throws an error if it doesn't match.
  * @private
  */
@@ -472,7 +494,7 @@ function _getAirportByCodeDirect(code: string): Airport | null {
  */
 const ALLOWED_FILTER_KEYS = new Set<string>([
     'iata', 'icao', 'time', 'utc', 'country_code', 'continent',
-    'airport', 'latitude', 'longitude', 'elevation_ft', 'elevation',
+    'airport', 'latitude', 'longitude', 'elevation_ft',
     'type', 'scheduled_service', 'wikipedia', 'website',
     'runway_length', 'flightradar24_url', 'radarbox_url', 'flightaware_url',
     'has_scheduled_service', 'min_runway_ft'
@@ -550,17 +572,13 @@ function _findAirportsInternal(filters: AirportFilters = {}): Airport[] {
                     break;
 
                 case 'has_scheduled_service': {
-                    const scheduledService = airport.scheduled_service;
                     const expectedValue = filterValue as boolean;
-                    const actualValue: boolean = typeof scheduledService === 'string'
-                        ? scheduledService.toLowerCase() === 'yes'
-                        : scheduledService === true;
-                    if (actualValue !== expectedValue) return false;
+                    if (hasScheduledService(airport) !== expectedValue) return false;
                     break;
                 }
 
                 case 'min_runway_ft': {
-                    const runwayLength = parseInt(airport.runway_length || '0', 10) || 0;
+                    const runwayLength = airport.runway_length ?? 0;
                     if (runwayLength < (filterValue as number)) return false;
                     break;
                 }
@@ -823,12 +841,7 @@ export async function calculateDistance(code1: string, code2: string): Promise<n
         return null;
     }
 
-    const lat1 = parseFloat(airport1.latitude);
-    const lon1 = parseFloat(airport1.longitude);
-    const lat2 = parseFloat(airport2.latitude);
-    const lon2 = parseFloat(airport2.longitude);
-
-    return haversineDistance(lat1, lon1, lat2, lon2);
+    return haversineDistance(airport1.latitude, airport1.longitude, airport2.latitude, airport2.longitude);
 }
 
 /**
@@ -979,19 +992,17 @@ export async function getAirportStatsByCountry(countryCode: string = ''): Promis
         const type = airport.type || 'unknown';
         stats.byType[type] = (stats.byType[type] || 0) + 1;
 
-        if (airport.scheduled_service === true || airport.scheduled_service === 'yes') {
+        if (hasScheduledService(airport)) {
             stats.withScheduledService++;
         }
 
-        const runwayLength = parseInt(airport.runway_length || '0', 10);
-        if (!isNaN(runwayLength) && runwayLength > 0) {
-            totalRunwayLength += runwayLength;
+        if (typeof airport.runway_length === 'number' && airport.runway_length > 0) {
+            totalRunwayLength += airport.runway_length;
             runwayCount++;
         }
 
-        const elevation = parseInt(airport.elevation, 10);
-        if (!isNaN(elevation)) {
-            totalElevation += elevation;
+        if (typeof airport.elevation_ft === 'number') {
+            totalElevation += airport.elevation_ft;
             elevationCount++;
         }
 
@@ -1054,19 +1065,17 @@ export async function getAirportStatsByContinent(continentCode: string = ''): Pr
         const country = airport.country_code || 'unknown';
         stats.byCountry[country] = (stats.byCountry[country] || 0) + 1;
 
-        if (airport.scheduled_service === true || airport.scheduled_service === 'yes') {
+        if (hasScheduledService(airport)) {
             stats.withScheduledService++;
         }
 
-        const runwayLength = parseInt(airport.runway_length || '0', 10);
-        if (!isNaN(runwayLength) && runwayLength > 0) {
-            totalRunwayLength += runwayLength;
+        if (typeof airport.runway_length === 'number' && airport.runway_length > 0) {
+            totalRunwayLength += airport.runway_length;
             runwayCount++;
         }
 
-        const elevation = parseInt(airport.elevation, 10);
-        if (!isNaN(elevation)) {
-            totalElevation += elevation;
+        if (typeof airport.elevation_ft === 'number') {
+            totalElevation += airport.elevation_ft;
             elevationCount++;
         }
 
@@ -1114,13 +1123,9 @@ export async function getLargestAirportsByContinent(continentCode: string = '', 
 
     const sorted = [...airports].sort((a, b) => {
         if (sortBy === 'elevation') {
-            const elevA = parseInt(a.elevation, 10) || 0;
-            const elevB = parseInt(b.elevation, 10) || 0;
-            return elevB - elevA;
+            return (b.elevation_ft ?? 0) - (a.elevation_ft ?? 0);
         } else {
-            const runwayA = parseInt(a.runway_length || '0', 10) || 0;
-            const runwayB = parseInt(b.runway_length || '0', 10) || 0;
-            return runwayB - runwayA;
+            return (b.runway_length ?? 0) - (a.runway_length ?? 0);
         }
     });
 
@@ -1191,8 +1196,8 @@ export async function calculateDistanceMatrix(codes: string[] = []): Promise<Dis
     }
 
     const coords = airports.map(airport => ({
-        lat: parseFloat(airport!.latitude),
-        lon: parseFloat(airport!.longitude)
+        lat: airport!.latitude,
+        lon: airport!.longitude
     }));
 
     const n = codes.length;
@@ -1255,11 +1260,9 @@ export async function findNearestAirport(lat: number, lon: number, filters: Airp
         const airports = _findAirportsInternal(filters);
 
         airports.forEach(airport => {
-            if (!airport.latitude || !airport.longitude) return;
+            if (typeof airport.latitude !== 'number' || typeof airport.longitude !== 'number') return;
 
-            const airportLat = parseFloat(airport.latitude);
-            const airportLon = parseFloat(airport.longitude);
-            const distance = haversineDistance(lat, lon, airportLat, airportLon);
+            const distance = haversineDistance(lat, lon, airport.latitude, airport.longitude);
 
             if (distance < minDistance) {
                 minDistance = distance;
@@ -1365,11 +1368,7 @@ export async function isAirportOperational(code: string): Promise<boolean> {
     if (!airport) {
         throw new Error(`Airport not found for code: ${code}`);
     }
-    const scheduledService = airport.scheduled_service;
-    return scheduledService === true ||
-        scheduledService === 'yes' ||
-        scheduledService === 'TRUE' ||
-        scheduledService === 'true';
+    return hasScheduledService(airport);
 }
 
 /**

@@ -2,12 +2,12 @@
  * Converts the raw CSV airport data to JSON format.
  * Reads data/airports.csv and writes data/airports.json.
  * This JSON file is then used by the compression script.
- * Usage: node scripts/csv_to_json.js
+ * Usage: npx tsx scripts/csv_to_json.ts
  */
 
-const fs = require('fs');
-const { parse } = require('csv-parse/sync');
-const path = require('path');
+import fs from 'node:fs';
+import path from 'node:path';
+import { parse } from 'csv-parse/sync';
 
 const csvFilePath = path.join(__dirname, '../data/airports.csv');
 const jsonFilePath = path.join(__dirname, '../data/airports.json');

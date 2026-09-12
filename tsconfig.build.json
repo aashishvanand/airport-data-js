@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationDir": null,
+    "outDir": "./.tsbuild",
+    "types": ["node"],
+    "module": "commonjs"
+  }
+}

@@ -15,22 +15,20 @@ export interface Airport {
     icao: string;
     /** IANA timezone identifier (e.g., "Asia/Singapore") */
     time: string;
-    /** UTC offset string (e.g., "+08:00") */
-    utc: string;
+    /** UTC offset in hours (e.g., 8, 5.5, -3.5). A DST-aware snapshot, not a fixed standard offset. */
+    utc: number;
     /** ISO 3166-1 alpha-2 country code (e.g., "SG", "GB", "US") */
     country_code: string;
     /** 2-letter continent code: AF, AN, AS, EU, NA, OC, SA */
     continent: string;
     /** Full airport name (e.g., "Singapore Changi Airport") */
     airport: string;
-    /** Latitude in decimal degrees as a string */
-    latitude: string;
-    /** Longitude in decimal degrees as a string */
-    longitude: string;
-    /** Elevation above sea level in feet (string) */
-    elevation: string;
-    /** Elevation in feet (string, same as elevation) */
-    elevation_ft: string;
+    /** Latitude in decimal degrees */
+    latitude: number;
+    /** Longitude in decimal degrees */
+    longitude: number;
+    /** Elevation above sea level in feet, or null when unknown */
+    elevation_ft: number | null;
     /** Airport classification: "large_airport" | "medium_airport" | "small_airport" | "heliport" | "seaplane_base" | "closed" */
     type: string;
     /** Whether the airport has scheduled commercial service */
@@ -39,8 +37,8 @@ export interface Airport {
     wikipedia?: string;
     /** Airport official website URL */
     website?: string;
-    /** Longest runway length in feet (string) */
-    runway_length?: string;
+    /** Longest runway length in feet, or null when unknown */
+    runway_length?: number | null;
     /** FlightRadar24 tracking URL */
     flightradar24_url?: string;
     /** RadarBox tracking URL */
@@ -78,19 +76,18 @@ export interface AirportFilters {
     iata?: string;
     icao?: string;
     time?: string;
-    utc?: string;
+    utc?: number;
     country_code?: string;
     continent?: string;
     airport?: string;
-    latitude?: string;
-    longitude?: string;
-    elevation_ft?: string;
-    elevation?: string;
+    latitude?: number;
+    longitude?: number;
+    elevation_ft?: number | null;
     type?: string;
     scheduled_service?: boolean | string;
     wikipedia?: string;
     website?: string;
-    runway_length?: string;
+    runway_length?: number | null;
     flightradar24_url?: string;
     radarbox_url?: string;
     flightaware_url?: string;

@@ -32,18 +32,19 @@ Each airport object contains the following fields:
 {
   iata: "SIN",                    // 3-letter IATA code
   icao: "WSSS",                   // 4-letter ICAO code
-  time: "Asia/Singapore",         // Timezone identifier
+  time: "Asia/Singapore",         // IANA timezone identifier
+  utc: 8,                         // UTC offset in hours (DST-aware snapshot, not a fixed standard offset)
   country_code: "SG",             // 2-letter country code
   continent: "AS",                // 2-letter continent code (AS, EU, NA, SA, AF, OC, AN)
   airport: "Singapore Changi Airport",  // Airport name
-  latitude: "1.35019",            // Latitude coordinate
-  longitude: "103.994003",        // Longitude coordinate
-  elevation: "22",                // Elevation in feet
+  latitude: 1.35019,              // Latitude in decimal degrees
+  longitude: 103.994003,          // Longitude in decimal degrees
+  elevation_ft: 22,               // Elevation in feet, or null when unknown
   type: "large_airport",          // Airport type
-  scheduled_service: true,        // Has scheduled commercial service
+  scheduled_service: "TRUE",      // "TRUE" or "FALSE" (has scheduled commercial service)
   wikipedia: "https://en.wikipedia.org/wiki/Singapore_Changi_Airport",
   website: "https://www.changiairport.com",
-  runway_length: "13200",         // Longest runway in feet
+  runway_length: 13200,           // Longest runway in feet, or null when unknown
   flightradar24_url: "https://www.flightradar24.com/airport/SIN",
   radarbox_url: "https://www.radarbox.com/airport/WSSS",
   flightaware_url: "https://www.flightaware.com/live/airport/WSSS"
@@ -474,38 +475,48 @@ npm run build
 ```
 airport-data-js/
 ├── src/
-│   ├── index.js                  # Library source code
-│   └── airports.compressed       # Compressed airport dataset
+│   ├── index.ts                  # Library source code
+│   ├── tools.ts                  # LLM tool-definition exports
+│   └── airports.data.json        # Gzip+base64 airport dataset (generated)
+├── .tsbuild/                     # Intermediate tsc output (generated, not committed)
 ├── lib/                          # Node.js CJS build output
 ├── dist/                         # Browser build output
 ├── data/
-│   └── airports.json             # Raw airport data (source of truth)
+│   ├── airports.csv              # Raw source data
+│   └── airports.json             # Converted JSON (source of truth for compression)
 ├── scripts/
-│   ├── compress_json.js          # Compresses airports.json for distribution
-│   ├── check_duplicates.js       # Validates no duplicate IATA/ICAO codes
-│   ├── extract_latest_changelog.js # Extracts changelog for GitHub releases
-│   └── benchmark.js              # Performance benchmarks
+│   ├── csv_to_json.ts            # Converts airports.csv to airports.json
+│   ├── compress_json.ts          # Gzips airports.json into src/airports.data.json
+│   ├── check_duplicates.ts       # Validates no duplicate IATA/ICAO codes
+│   ├── extract_latest_changelog.ts # Extracts changelog for GitHub releases
+│   └── benchmark.ts              # Performance benchmarks
 ├── tests/
-│   └── index.test.js             # Jest test suite
+│   └── index.test.ts             # Vitest test suite
 ├── webpack.node.cjs              # Webpack config for Node.js bundle
-└── webpack.browser.cjs           # Webpack config for browser bundle
+├── webpack.browser.cjs           # Webpack config for browser bundle
+└── webpack.tools.cjs             # Webpack config for the tools bundle
 ```
+
+Scripts are plain TypeScript run directly via [`tsx`](https://github.com/privatenumber/tsx) (no separate compile step needed for dev tooling).
 
 ### Available Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm test` | Run the Jest test suite |
-| `npm run build` | Build both Node.js (`lib/`) and browser (`dist/`) bundles |
+| `npm test` | Run the Vitest test suite |
+| `npm run build` | Build declarations, transpile, then bundle Node.js (`lib/`) and browser (`dist/`) output |
 | `npm run build:lib` | Build only the Node.js bundle |
 | `npm run build:dist` | Build only the browser bundle |
-| `npm run check:duplicates` | Check for duplicate airport codes in the dataset |
+| `npm run check:duplicates` | Validate the dataset: duplicate IATA/ICAO codes, coordinate ranges, continent/type enums, country code format, `scheduled_service`/`utc` types, plus a data-completeness report |
+| `npm run generate:json` | Regenerate `data/airports.json` from `data/airports.csv` |
+| `npm run generate:compressed` | Regenerate `src/airports.data.json` from `data/airports.json` |
+| `npm run benchmark` | Run performance benchmarks against the built browser bundle |
 
 ### Development Workflow
 
 1. **Create a branch** from `main` for your changes
-2. **Make your changes** in `src/index.js` or `data/airports.json`
-3. **Add or update tests** in `tests/index.test.js`
+2. **Make your changes** in `src/index.ts` or `data/airports.json`
+3. **Add or update tests** in `tests/index.test.ts`
 4. **Run tests** to make sure everything passes: `npm test`
 5. **Build** to verify the bundles compile: `npm run build`
 6. **Submit a pull request** against `main`
@@ -515,10 +526,10 @@ airport-data-js/
 If you are adding or updating airport entries:
 
 1. Edit `data/airports.json` directly
-2. Run `npm run check:duplicates` to ensure no duplicate IATA/ICAO codes
-3. Run `node scripts/compress_json.js` to regenerate the compressed dataset
+2. Run `npm run generate:compressed` to regenerate `src/airports.data.json`
+3. Run `npm run check:duplicates` to validate the dataset (it reads the compressed file)
 4. Run `npm test` to verify the changes
-5. Submit a pull request with both the JSON and compressed data changes
+5. Submit a pull request with both the JSON and generated data changes
 
 ## Publishing a New Version
 
@@ -532,7 +543,7 @@ Releases are automated via the [release workflow](.github/workflows/release.yml)
    ```
 4. **Commit your changes** to `main`
 5. **Push or merge to the `release` branch** -- this triggers the CI pipeline which will:
-   - Run tests across Node.js 20.x, 22.x, and 24.x
+   - Run tests across Node.js 22.x and 24.x
    - Run a security audit (`npm audit --audit-level=critical`)
    - Check for duplicate airport codes
    - Build the package

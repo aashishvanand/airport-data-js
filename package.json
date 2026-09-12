@@ -1,6 +1,6 @@
 {
   "name": "airport-data-js",
-  "version": "3.1.0",
+  "version": "4.0.0",
   "type": "commonjs",
   "description": "A comprehensive TypeScript library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Includes LLM tool definitions for AI integration.",
   "main": "lib/index.js",
@@ -26,17 +26,22 @@
     "README.md"
   ],
   "scripts": {
-    "test": "jest --config jest.config.cjs",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build:types": "tsc --emitDeclarationOnly",
+    "build:transpile": "tsc -p tsconfig.build.json",
     "build:lib": "webpack --config webpack.node.cjs",
     "build:dist": "webpack --config webpack.browser.cjs",
     "build:tools": "webpack --config webpack.tools.cjs",
-    "build": "npm run build:types && npm run build:lib && npm run build:dist && npm run build:tools",
-    "check:duplicates": "node scripts/check_duplicates.js"
+    "build": "npm run build:types && npm run build:transpile && npm run build:lib && npm run build:dist && npm run build:tools",
+    "check:duplicates": "tsx scripts/check_duplicates.ts",
+    "generate:json": "tsx scripts/csv_to_json.ts",
+    "generate:compressed": "tsx scripts/compress_json.ts",
+    "benchmark": "tsx scripts/benchmark.ts",
+    "changelog:extract": "tsx scripts/extract_latest_changelog.ts"
   },
   "dependencies": {
-    "jsonpack": "^1.1.5"
+    "pako": "^3.0.2"
   },
   "repository": {
     "type": "git",
@@ -66,31 +71,35 @@
   ],
   "author": "Aashish Vivekanand",
   "license": "CC BY 4.0",
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  },
   "bugs": {
     "url": "https://github.com/aashishvanand/airport-data-js/issues"
   },
   "homepage": "https://airportdata.dev/",
+  "overrides": {
+    "brace-expansion@1": "^1.1.14",
+    "brace-expansion@2": "^2.1.0",
+    "ajv@8": "^8.18.0",
+    "fast-uri": "^3.1.4",
+    "postcss": "^8.5.18",
+    "browserslist": "^4.28.7",
+    "baseline-browser-mapping": "^2.11.0"
+  },
   "devDependencies": {
-    "@babel/core": "^7.28.6",
-    "@babel/plugin-transform-modules-commonjs": "^7.28.6",
-    "@babel/preset-env": "^7.28.6",
-    "@types/jest": "^30.0.0",
-    "arraybuffer-loader": "^1.0.8",
-    "babel-jest": "^30.2.0",
-    "babel-loader": "^10.0.0",
-    "countries-and-timezones": "^3.8.0",
-    "countries-list": "^3.2.2",
-    "csv-parse": "^6.1.0",
-    "csv-stringify": "^6.6.0",
-    "fs-extra": "^11.3.3",
-    "geo-tz": "^8.1.5",
-    "jest": "^30.2.0",
+    "@babel/core": "^8.0.5",
+    "@babel/plugin-transform-modules-commonjs": "^8.0.1",
+    "@babel/preset-env": "^8.0.5",
+    "@types/node": "^26.1.1",
+    "babel-loader": "^10.1.1",
+    "csv-parse": "^7.0.2",
+    "fs-extra": "^11.4.0",
     "path-browserify": "^1.0.1",
-    "raw-loader": "^4.0.2",
-    "ts-jest": "^29.4.9",
-    "ts-loader": "^9.5.1",
-    "typescript": "^5.7.3",
-    "webpack": "^5.104.1",
-    "webpack-cli": "^7.0.2"
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0",
+    "webpack": "^5.110.3",
+    "webpack-cli": "^7.2.3"
   }
 }

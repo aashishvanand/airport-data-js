@@ -1,18 +1,18 @@
-const fs = require('fs');
-const path = require('path');
-
 /**
  * Extracts the latest version section from CHANGELOG.md
  * for use in GitHub release notes.
  * Used by CI/CD workflows.
- * Usage: node scripts/extract_latest_changelog.js
+ * Usage: npx tsx scripts/extract_latest_changelog.ts
  */
+
+import fs from 'node:fs';
+import path from 'node:path';
 
 const changelogPath = path.join(__dirname, '../CHANGELOG.md');
 const packagePath = path.join(__dirname, '../package.json');
 
 const changelogContent = fs.readFileSync(changelogPath, 'utf8');
-const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8')) as { version: string };
 const packageVersion = packageJson.version;
 
 // Check if there's an Unreleased section
@@ -29,22 +29,20 @@ if (matches.length === 0) {
 }
 
 // Determine which section to use
-let sectionToExtract;
-let versionNumber;
+const sectionToExtract = 0;
+let versionNumber: string;
 
 if (unreleasedMatch && matches[0].index === unreleasedMatch.index) {
     // Use Unreleased section and package.json version
-    sectionToExtract = 0;
     versionNumber = packageVersion;
 } else {
     // Use the first released version
-    sectionToExtract = 0;
     const versionMatch = matches[0][0].match(/\[(\d+\.\d+\.\d+)\]/);
     versionNumber = versionMatch ? versionMatch[1] : packageVersion;
 }
 
-const sectionIndex = matches[sectionToExtract].index;
-const nextSectionIndex = matches[sectionToExtract + 1] ? matches[sectionToExtract + 1].index : changelogContent.length;
+const sectionIndex = matches[sectionToExtract].index!;
+const nextSectionIndex = matches[sectionToExtract + 1] ? matches[sectionToExtract + 1].index! : changelogContent.length;
 
 // Extract content between current and next section headers
 let sectionContent = changelogContent.substring(sectionIndex, nextSectionIndex).trim();
@@ -78,4 +76,3 @@ See [CHANGELOG.md](https://github.com/aashishvanand/airport-data-js/blob/main/CH
 
 // Output the formatted release notes
 console.log(releaseNotes);
-
