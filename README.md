@@ -543,7 +543,7 @@ Releases are automated via the [release workflow](.github/workflows/release.yml)
    ```
 4. **Commit your changes** to `main`
 5. **Push or merge to the `release` branch** -- this triggers the CI pipeline which will:
-   - Run tests across Node.js 20.x, 22.x, and 24.x
+   - Run tests across Node.js 22.x and 24.x
    - Run a security audit (`npm audit --audit-level=critical`)
    - Check for duplicate airport codes
    - Build the package

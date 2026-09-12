@@ -71,6 +71,9 @@
   ],
   "author": "Aashish Vivekanand",
   "license": "CC BY 4.0",
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
+  },
   "bugs": {
     "url": "https://github.com/aashishvanand/airport-data-js/issues"
   },
