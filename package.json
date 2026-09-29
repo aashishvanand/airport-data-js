@@ -88,18 +88,18 @@
     "baseline-browser-mapping": "^2.11.0"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.5",
+    "@babel/core": "^8.0.6",
     "@babel/plugin-transform-modules-commonjs": "^8.0.1",
-    "@babel/preset-env": "^8.0.5",
-    "@types/node": "^26.1.1",
+    "@babel/preset-env": "^8.0.6",
+    "@types/node": "^26.6.3",
     "babel-loader": "^10.1.1",
     "csv-parse": "^7.0.2",
     "fs-extra": "^11.4.0",
     "path-browserify": "^1.0.1",
-    "tsx": "^4.23.13",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.0",
-    "webpack": "^5.110.3",
+    "vitest": "^5.0.2",
+    "webpack": "^5.111.1",
     "webpack-cli": "^7.2.3"
   }
 }
