@@ -1,6 +1,6 @@
 {
   "name": "airport-data-js",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "type": "commonjs",
   "description": "A comprehensive TypeScript library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Includes LLM tool definitions for AI integration.",
   "main": "lib/index.js",
@@ -8,19 +8,44 @@
   "browser": "dist/airport-data.min.js",
   "exports": {
     ".": {
-      "types": "./types/index.d.ts",
-      "require": "./lib/index.js",
+      "import": {
+        "types": "./types/index.d.mts",
+        "default": "./lib/index.mjs"
+      },
+      "require": {
+        "types": "./types/index.d.ts",
+        "default": "./lib/index.js"
+      },
       "default": "./lib/index.js"
     },
+    "./lite": {
+      "import": {
+        "types": "./types/lite.d.mts",
+        "default": "./lib/lite.mjs"
+      },
+      "require": {
+        "types": "./types/lite.d.ts",
+        "default": "./lib/lite.js"
+      },
+      "default": "./lib/lite.js"
+    },
     "./tools": {
-      "types": "./types/tools.d.ts",
-      "require": "./lib/tools.js",
+      "import": {
+        "types": "./types/tools.d.mts",
+        "default": "./lib/tools.mjs"
+      },
+      "require": {
+        "types": "./types/tools.d.ts",
+        "default": "./lib/tools.js"
+      },
       "default": "./lib/tools.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "lib/",
-    "dist/",
+    "dist/airport-data.min.js",
+    "dist/airport-data.lite.min.js",
     "types/",
     "LICENSE",
     "README.md"
@@ -29,16 +54,19 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build:types": "tsc --emitDeclarationOnly",
-    "build:transpile": "tsc -p tsconfig.build.json",
+    "build:transpile": "tsc -p tsconfig.build.json && tsc -p tsconfig.build.esm.json",
     "build:lib": "webpack --config webpack.node.cjs",
     "build:dist": "webpack --config webpack.browser.cjs",
     "build:tools": "webpack --config webpack.tools.cjs",
-    "build": "npm run build:types && npm run build:transpile && npm run build:lib && npm run build:dist && npm run build:tools",
+    "build": "npm run build:types && npm run build:esm-types && npm run build:transpile && npm run build:lib && npm run build:dist && npm run build:tools && npm run build:esm",
     "check:duplicates": "tsx scripts/check_duplicates.ts",
     "generate:json": "tsx scripts/csv_to_json.ts",
     "generate:compressed": "tsx scripts/compress_json.ts",
     "benchmark": "tsx scripts/benchmark.ts",
-    "changelog:extract": "tsx scripts/extract_latest_changelog.ts"
+    "changelog:extract": "tsx scripts/extract_latest_changelog.ts",
+    "build:esm": "webpack --config webpack.esm.cjs",
+    "build:esm-types": "tsx scripts/build_esm_types.ts",
+    "refresh:data": "tsx scripts/refresh_ourairports.ts"
   },
   "dependencies": {
     "pako": "^3.0.2"
@@ -101,5 +129,6 @@
     "vitest": "^5.0.2",
     "webpack": "^5.111.1",
     "webpack-cli": "^7.2.3"
-  }
+  },
+  "module": "lib/index.mjs"
 }

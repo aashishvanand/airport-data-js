@@ -18,3 +18,8 @@ lib/
 
 data_source/
 data/*.csv
+# Local tooling output (website build, Cloudflare)
+.vinext/
+.wrangler/
+.tsbuild-esm/
+TODO.md

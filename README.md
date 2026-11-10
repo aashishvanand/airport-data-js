@@ -8,10 +8,32 @@ A comprehensive JavaScript library for retrieving airport information by IATA co
 npm install airport-data-js
 ```
 
+### Entry points
+
+| Import | Contents | Size (minified) |
+|--------|----------|-----------------|
+| `airport-data-js` | Full dataset (~18,800 airports, all fields) | ~1.3 MB |
+| `airport-data-js/lite` | Same API, only airports with an IATA code (~10,200), without the `wikipedia`/`website`/tracker URL fields; coordinates rounded to 4 decimals (~11 m) | ~540 KB |
+| `airport-data-js/tools` | LLM tool definitions (JSON Schema) | ~12 KB |
+
+Both CommonJS and ES modules are supported:
+
+```javascript
+// ESM (Node, Vite, Next.js, Deno, bundlers)
+import { search, getLocalTime } from 'airport-data-js';
+import { search as searchLite } from 'airport-data-js/lite';
+
+// CommonJS
+const { search, getLocalTime } = require('airport-data-js');
+```
+
 ## Features
 
 - 🌍 Comprehensive airport database with worldwide coverage
-- 🔍 Search by IATA codes, ICAO codes, country, continent, and more
+- 🔍 Search by IATA codes, ICAO codes, city, country, continent, and more
+- 🏙️ City-aware, ranked search: `search('New York')` returns JFK, EWR and LGA; metro codes like `NYC`/`LON`; accent-insensitive and typo-tolerant
+- 🕰️ DST-aware local time and UTC offsets for any airport, using built-in `Intl` (no dependencies)
+- 📦 ESM + CommonJS builds, plus a ~540 KB `lite` entry point
 - 📍 Geographic proximity search with customizable radius
 - 🔗 External links to Wikipedia, airport websites, and flight tracking services
 - 📏 Distance calculation between airports
@@ -33,10 +55,12 @@ Each airport object contains the following fields:
   iata: "SIN",                    // 3-letter IATA code
   icao: "WSSS",                   // 4-letter ICAO code
   time: "Asia/Singapore",         // IANA timezone identifier
-  utc: 8,                         // UTC offset in hours (DST-aware snapshot, not a fixed standard offset)
+  utc: 8,                         // Deprecated: July snapshot of the UTC offset; use getUtcOffset(code, date) instead
   country_code: "SG",             // 2-letter country code
   continent: "AS",                // 2-letter continent code (AS, EU, NA, SA, AF, OC, AN)
   airport: "Singapore Changi Airport",  // Airport name
+  city: "Singapore",              // City/municipality served ("" when unknown)
+  city_code: "SIN",               // IATA city/metro code, e.g. "NYC" for JFK/LGA/EWR ("" when unknown)
   latitude: 1.35019,              // Latitude in decimal degrees
   longitude: 103.994003,          // Longitude in decimal degrees
   elevation_ft: 22,               // Elevation in feet, or null when unknown
@@ -99,11 +123,82 @@ const airports = await getAirportByIcao('EGLL');
 ```
 
 #### `searchByName(query)`
-Searches for airports by name (case-insensitive, minimum 2 characters).
+Searches for airports by name (case- and accent-insensitive, minimum 2 characters). For city-aware, ranked results use [`search`](#searchquery-options).
 
 ```javascript
 const airports = await searchByName('Heathrow');
 // Returns airports with 'Heathrow' in their name
+```
+
+### City & Ranked Search
+
+#### `search(query, options)`
+Unified, ranked search across codes, cities and names. This is the best default for search boxes.
+
+Ranking: exact IATA > exact ICAO > IATA metro code (`NYC`, `LON`) > exact city > city prefix > name prefix > name word prefix > substring > typo-tolerant match. Within each tier, large airports with scheduled service come first. An exact city match also pulls in the other airports of that city's metro area (EWR is in "Newark" but belongs to `NYC`).
+
+```javascript
+await search('New York');   // JFK, EWR, LGA, ...
+await search('LON');        // LHR, LGW, STN, LTN, LCY, ...
+await search('zurich');     // ZRH ("Zürich" also works)
+await search('frankfrut');  // FRA (typo-tolerant, matchType: 'fuzzy')
+await search('paris', { scheduledOnly: true, country_code: 'FR', limit: 3 });
+
+const [best] = await search('heathrow');
+console.log(best.iata, best.matchType); // "LHR" "name"
+```
+
+Options: `limit` (1-100, default 10), `scheduledOnly`, `types` (e.g. `['large_airport']`), `country_code`, `fuzzy` (default `true`).
+
+#### `getAirportsByCity(city)`
+Airports whose city matches (case- and accent-insensitive), major airports first. Qualified municipalities match their base name ("Paris (Orly, Val-de-Marne)" matches "Paris").
+
+```javascript
+const airports = await getAirportsByCity('London');
+console.log(airports[0].iata); // "LHR"
+```
+
+#### `getAirportsByCityCode(cityCode)`
+All airports in an IATA city/metropolitan area code.
+
+```javascript
+await getAirportsByCityCode('NYC'); // JFK, EWR, LGA, ...
+await getAirportsByCityCode('TYO'); // NRT, HND, ...
+```
+
+### Time Zone & Local Time
+
+The `utc` field is a fixed July snapshot, so it is wrong for about half the year in regions with daylight saving time (JFK reads `-4`, but it is `-5` in winter). These functions use the airport's IANA time zone with the built-in `Intl` API instead. `date` can be a `Date`, epoch milliseconds, or an ISO string, and defaults to now. Each returns `null` for an unknown airport.
+
+#### `getUtcOffset(code, date)`
+
+```javascript
+await getUtcOffset('JFK', '2026-07-01T12:00:00Z'); // -4
+await getUtcOffset('JFK', '2026-12-01T12:00:00Z'); // -5
+await getUtcOffset('DEL');                          // 5.5
+```
+
+#### `getLocalTime(code, date)`
+
+```javascript
+await getLocalTime('LHR', '2026-07-01T12:00:00Z');
+// {
+//   timeZone: 'Europe/London',
+//   iso: '2026-07-01T13:00:00+01:00',
+//   date: '2026-07-01',
+//   time: '13:00:00',
+//   utcOffset: 1,
+//   utcOffsetString: '+01:00',
+//   isDst: true
+// }
+```
+
+#### `formatAirportTime(code, options)`
+Formats a moment in the airport's local time. Accepts `date`, `locale` (default `en-US`) and any `Intl.DateTimeFormat` option; defaults to `{ dateStyle: 'medium', timeStyle: 'short' }`.
+
+```javascript
+await formatAirportTime('NRT', { date: '2026-11-10T00:00:00Z' });                // "Nov 10, 2026, 9:00 AM"
+await formatAirportTime('CDG', { locale: 'fr-FR', timeStyle: 'short' });          // "14:05"
 ```
 
 ### Geographic Functions
@@ -183,11 +278,11 @@ const longRunwayAirports = await findAirports({
 ```
 
 #### `getAutocompleteSuggestions(query)`
-Provides autocomplete suggestions for search interfaces (returns max 10 results).
+Provides autocomplete suggestions for search interfaces (returns max 10 results). Uses the same ranking as `search` (without typo tolerance) and returns plain airport objects.
 
 ```javascript
 const suggestions = await getAutocompleteSuggestions('Lon');
-// Returns up to 10 airports matching 'Lon' in name or IATA code
+// LHR, LGW, STN, LTN, LCY, ...
 ```
 
 #### `getAirportLinks(code)`
@@ -364,11 +459,20 @@ console.log(`Distance: ${Math.round(distance)} km`);
 
 ### Build an airport search interface
 ```javascript
-// Get autocomplete suggestions
-const suggestions = await getAutocompleteSuggestions('New York');
-suggestions.forEach(airport => {
-  console.log(`${airport.iata} - ${airport.airport}`);
+const results = await search('New York', { scheduledOnly: true });
+results.forEach(airport => {
+  console.log(`${airport.iata} - ${airport.airport} (${airport.city})`);
 });
+// JFK - John F. Kennedy International Airport (New York)
+// EWR - Newark Liberty International Airport (Newark)
+// LGA - LaGuardia Airport (New York)
+```
+
+### Show local departure time
+```javascript
+const departure = '2026-12-24T15:30:00Z';
+const local = await getLocalTime('JFK', departure);
+console.log(`Departs ${local.time} local (UTC${local.utcOffsetString})`); // Departs 10:30:00 local (UTC-05:00)
 ```
 
 ### Filter airports by multiple criteria
@@ -475,25 +579,33 @@ npm run build
 ```
 airport-data-js/
 ├── src/
-│   ├── index.ts                  # Library source code
+│   ├── core.ts                   # Library source code (all functions and types)
+│   ├── index.ts                  # Full entry point: registers the full dataset
+│   ├── lite.ts                   # Lite entry point: registers the lite dataset
+│   ├── state.ts                  # Holds the dataset registered by the entry point
 │   ├── tools.ts                  # LLM tool-definition exports
-│   └── airports.data.json        # Gzip+base64 airport dataset (generated)
+│   ├── airports.data.json        # Gzip+base64 columnar dataset (generated)
+│   └── airports.lite.data.json   # Gzip+base64 lite dataset (generated)
 ├── .tsbuild/                     # Intermediate tsc output (generated, not committed)
-├── lib/                          # Node.js CJS build output
+├── lib/                          # Node.js CJS (.js) and ESM (.mjs) build output
 ├── dist/                         # Browser build output
 ├── data/
 │   ├── airports.csv              # Raw source data
 │   └── airports.json             # Converted JSON (source of truth for compression)
 ├── scripts/
 │   ├── csv_to_json.ts            # Converts airports.csv to airports.json
-│   ├── compress_json.ts          # Gzips airports.json into src/airports.data.json
+│   ├── compress_json.ts          # Gzips airports.json into the full and lite payloads
+│   ├── refresh_ourairports.ts    # Syncs with OurAirports: new airports, IATA codes, cities
+│   ├── build_esm_types.ts        # Creates .d.mts declarations for the ESM exports
 │   ├── check_duplicates.ts       # Validates no duplicate IATA/ICAO codes
 │   ├── extract_latest_changelog.ts # Extracts changelog for GitHub releases
 │   └── benchmark.ts              # Performance benchmarks
 ├── tests/
-│   └── index.test.ts             # Vitest test suite
+│   ├── index.test.ts             # Vitest test suite
+│   └── v4_1.test.ts              # City search, time zone, lite and ESM tests
 ├── webpack.node.cjs              # Webpack config for Node.js bundle
-├── webpack.browser.cjs           # Webpack config for browser bundle
+├── webpack.browser.cjs           # Webpack config for browser bundles (full + lite)
+├── webpack.esm.cjs               # Webpack config for the ESM bundles
 └── webpack.tools.cjs             # Webpack config for the tools bundle
 ```
 
@@ -506,16 +618,18 @@ Scripts are plain TypeScript run directly via [`tsx`](https://github.com/private
 | `npm test` | Run the Vitest test suite |
 | `npm run build` | Build declarations, transpile, then bundle Node.js (`lib/`) and browser (`dist/`) output |
 | `npm run build:lib` | Build only the Node.js bundle |
-| `npm run build:dist` | Build only the browser bundle |
+| `npm run build:dist` | Build only the browser bundles |
+| `npm run build:esm` | Build only the ESM bundles (`lib/*.mjs`) |
+| `npm run refresh:data` | Diff against the latest OurAirports export (dry run; add `-- --write` to save, `-- --add FSH,BZJ` to force-add codes) |
 | `npm run check:duplicates` | Validate the dataset: duplicate IATA/ICAO codes, coordinate ranges, continent/type enums, country code format, `scheduled_service`/`utc` types, plus a data-completeness report |
 | `npm run generate:json` | Regenerate `data/airports.json` from `data/airports.csv` |
-| `npm run generate:compressed` | Regenerate `src/airports.data.json` from `data/airports.json` |
+| `npm run generate:compressed` | Regenerate `src/airports.data.json` and `src/airports.lite.data.json` from `data/airports.json` |
 | `npm run benchmark` | Run performance benchmarks against the built browser bundle |
 
 ### Development Workflow
 
 1. **Create a branch** from `main` for your changes
-2. **Make your changes** in `src/index.ts` or `data/airports.json`
+2. **Make your changes** in `src/core.ts` or `data/airports.json`
 3. **Add or update tests** in `tests/index.test.ts`
 4. **Run tests** to make sure everything passes: `npm test`
 5. **Build** to verify the bundles compile: `npm run build`
@@ -523,9 +637,11 @@ Scripts are plain TypeScript run directly via [`tsx`](https://github.com/private
 
 ### Updating Airport Data
 
-If you are adding or updating airport entries:
+A [weekly workflow](.github/workflows/data-refresh.yml) runs `refresh:data` against OurAirports every Monday and opens a PR when something changed: new scheduled-service airports, newly assigned IATA codes on existing records, and city names. IATA codes that differ between the dataset and OurAirports are listed in the PR for review but never changed automatically. You can also run it manually from the Actions tab and pass extra codes to add.
 
-1. Edit `data/airports.json` directly
+To add or update airport entries by hand:
+
+1. Edit `data/airports.json` directly (or run `npm run refresh:data -- --write`)
 2. Run `npm run generate:compressed` to regenerate `src/airports.data.json`
 3. Run `npm run check:duplicates` to validate the dataset (it reads the compressed file)
 4. Run `npm test` to verify the changes

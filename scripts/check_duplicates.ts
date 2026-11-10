@@ -15,7 +15,12 @@ console.log('🔍 Validating airport dataset...\n');
 
 const dataFilePath = path.join(__dirname, '../src', 'airports.data.json');
 const { gzip } = JSON.parse(fs.readFileSync(dataFilePath, 'utf8')) as { gzip: string };
-const airportsData = JSON.parse(gunzipSync(Buffer.from(gzip, 'base64')).toString('utf8')) as Airport[];
+const parsed = JSON.parse(gunzipSync(Buffer.from(gzip, 'base64')).toString('utf8')) as Airport[] | Record<string, unknown[]>;
+// The payload is columnar ({ field: values[] }); rebuild rows.
+const airportsData: Airport[] = Array.isArray(parsed)
+    ? parsed
+    : parsed[Object.keys(parsed)[0]].map((_, i) =>
+        Object.fromEntries(Object.keys(parsed).map(f => [f, parsed[f][i]])) as unknown as Airport);
 
 const VALID_CONTINENTS = new Set(['AF', 'AN', 'AS', 'EU', 'NA', 'OC', 'SA']);
 const VALID_TYPES = new Set(['large_airport', 'medium_airport', 'small_airport', 'heliport', 'seaplane_base', 'closed']);
@@ -81,6 +86,24 @@ const badType: FieldIssue[] = [];
 const badCountryCode: FieldIssue[] = [];
 const badScheduledService: FieldIssue[] = [];
 const badUtc: FieldIssue[] = [];
+const badTimezone: FieldIssue[] = [];
+const badCity: FieldIssue[] = [];
+const badCodeType: FieldIssue[] = [];
+
+const validTimezoneCache = new Map<string, boolean>();
+function isValidTimeZone(tz: unknown): boolean {
+    if (typeof tz !== 'string' || tz.trim() !== tz || tz === '') return false;
+    if (!validTimezoneCache.has(tz)) {
+        let ok = true;
+        try {
+            new Intl.DateTimeFormat('en-US', { timeZone: tz });
+        } catch {
+            ok = false;
+        }
+        validTimezoneCache.set(tz, ok);
+    }
+    return validTimezoneCache.get(tz)!;
+}
 
 let missingRunwayLength = 0;
 let missingElevationFt = 0;
@@ -112,6 +135,16 @@ airportsData.forEach(airport => {
         badUtc.push({ code: label, reason: `utc=${JSON.stringify(airport.utc)}` });
     }
 
+    if (!isValidTimeZone(airport.time)) {
+        badTimezone.push({ code: label, reason: `time=${JSON.stringify(airport.time)}` });
+    }
+    if (typeof airport.city !== 'string' || (airport.city_code !== '' && !/^[A-Z]{3}$/.test(airport.city_code ?? ''))) {
+        badCity.push({ code: label, reason: `city=${JSON.stringify(airport.city)} city_code=${JSON.stringify(airport.city_code)}` });
+    }
+    if (typeof airport.icao !== 'string' || typeof airport.iata !== 'string') {
+        badCodeType.push({ code: label, reason: `iata=${JSON.stringify(airport.iata)} icao=${JSON.stringify(airport.icao)}` });
+    }
+
     if (airport.runway_length === null || airport.runway_length === undefined) missingRunwayLength++;
     if (airport.elevation_ft === null || airport.elevation_ft === undefined) missingElevationFt++;
     if (!airport.iata) missingIata++;
@@ -136,6 +169,9 @@ reportIssues('Airport type', badType);
 reportIssues('Country code format', badCountryCode);
 reportIssues('scheduled_service value (must be "TRUE" or "FALSE")', badScheduledService);
 reportIssues('utc field (must be numeric)', badUtc);
+reportIssues('IANA timezone (time field)', badTimezone);
+reportIssues('city / city_code fields', badCity);
+reportIssues('iata/icao field type (must be strings)', badCodeType);
 
 // --- Report-only: known, non-blocking data gaps ---
 

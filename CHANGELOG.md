@@ -6,6 +6,49 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [4.1.0] - 2026-11-10
+
+### 🆕 New Features
+
+- **City data** — every airport now has `city` (municipality from OurAirports; set on 16,274 records) and `city_code` (IATA city/metro code such as `NYC`, `LON`, `TYO`; set on 9,609 records). Both are `""` when unknown. `findAirports` accepts `city` and `city_code` filters.
+- **`search(query, options)`** — unified, ranked search: exact IATA > ICAO > metro code > exact city > city prefix > name prefix > substring > typo-tolerant match, with major scheduled-service airports first. Case- and accent-insensitive (`zurich` finds `Zürich`). An exact city match pulls in the rest of the metro area, so `search('New York')` returns JFK, EWR and LGA. Results include `score` and `matchType`. Options: `limit`, `scheduledOnly`, `types`, `country_code`, `fuzzy`.
+- **`getAirportsByCity(city)`** and **`getAirportsByCityCode(cityCode)`** — city and metro-area lookups, major airports first.
+- **City aliases** — `search` and `getAirportsByCity` recognize common former and alternative names (Bombay, Bangalore, Peking, Saigon, Kiev, Athens, Brussels, Roma, München, ...).
+- **DST-aware time helpers** — `getUtcOffset(code, date?)`, `getLocalTime(code, date?)` and `formatAirportTime(code, { date, locale, ...Intl options })`, built on `Intl.DateTimeFormat` with no new dependencies.
+- **ES module builds** — `import` now resolves to `lib/*.mjs` with matching `.d.mts` types, alongside the existing CommonJS build.
+- **`airport-data-js/lite`** — same API with a ~540 KB bundle (vs ~1.3 MB): only airports with an IATA code, no `wikipedia`/`website`/tracker URL fields, coordinates rounded to 4 decimals. Also available as `dist/airport-data.lite.min.js`.
+- **LLM tools** — `search`, `getAirportsByCity`, `getAirportsByCityCode`, `getUtcOffset`, `getLocalTime` and `formatAirportTime` added to `airport-data-js/tools`.
+
+### 🔄 Changes
+
+- **`getAutocompleteSuggestions`** now uses the `search` ranking (codes, cities, metro codes and names; major airports first) instead of returning the first 10 name/IATA substring matches in dataset order.
+- **`searchByName`** is now accent-insensitive.
+- **`Airport.utc`** is marked `@deprecated`: it is a July snapshot and is wrong for about half the year in DST regions (8,434 airports on 2026-11-10). Use `getUtcOffset`.
+- The bundled dataset is now stored column by column, which cuts the full bundle from ~1.5 MB to ~1.3 MB with no API change.
+
+### 🐛 Fixes
+
+- **OGG** (Kahului) — continent `NA` → `OC`, matching the other Hawaiian airports ([#195](https://github.com/aashishvanand/airport-data-js/issues/195)).
+- **KKM** (Khok Kathiam) — time zone `"Asia/ Bangkok"` → `"Asia/Bangkok"`.
+- **CKQ7** (Vermilion Bay, Ontario) — time zone `"Vermillion Bay"` → `"America/Winnipeg"`; name corrected to "Vermilion Bay Airport".
+- **KTKI** (McKinney National) — IATA `QQT` → `DTX` (`QQT` belongs to Qeqertaq Heliport); longitude corrected from -95.59 to -96.59 and elevation from 16,233 ft to 585 ft.
+- **SWOO** (Fazenda San Diego, Brazil) — ICAO was the number `2136`; corrected to `SWOO`.
+- **HTO** (East Hampton, NY) — the airport existed twice: a stale `HTO`/`KHTO` record and the current one under `JPX`/`KJPX` (`JPX` is the FAA code, not IATA). Merged into one record, `HTO`/`KJPX`.
+- **GYB** (Wodgina, Australia) — the code now belongs to the new Port Hedland/Wodgina Airport (`YWGA`), which carried `QBW` (Batemans Bay's code). The old Wodgina strip (`YWDC`) is marked closed.
+- **FYG** (Fuyong Ferry Port, Shenzhen) — removed the ICAO `KFYG`, which belongs to Washington Regional Airport, Missouri.
+
+### 🗺️ Data updates
+
+- Added: **FSH** Syekh Hamzah Fansyuri (Indonesia, scheduled service), **BZJ** Bozhou (China, under construction), **DEJ** Tongren Dejiang (China, under construction), **DHH** Barkol Dahe (China), **BQR** Maulana Prins Mandapar Airstrip (Indonesia).
+- IATA codes set on existing records, from OurAirports: **LTH** (VVLT, Long Thanh), **QHR** (HAHM, Harar Meda), IMU (WAYG), GXM (WAGA), IAX (WAMS), KUB (WBAK), UCZ (SPIZ), ZLR (SCLN), IZM (LTFB), AIY (SNUI), CHE (EECL), UTE (FABU), AHG (FIMA), FDA (SKFU), DJR (YDAJ).
+
+### 🔧 Tooling
+
+- `scripts/refresh_ourairports.ts` (`npm run refresh:data`) syncs with the latest OurAirports export: adds scheduled-service airports (or any codes passed with `--add`), sets newly assigned IATA codes, fills `city`/`city_code`, and lists IATA mismatches for review. Source records only count as a match within 50 km, so a reused code can't attach another airport's data.
+- New weekly GitHub Action (`data-refresh.yml`) runs the refresh, validates, builds, tests and opens a PR.
+- `npm run check:duplicates` now also fails on invalid IANA time zones, malformed `city`/`city_code`, and non-string `iata`/`icao`.
+- The npm package now ships only `dist/airport-data.min.js` and `dist/airport-data.lite.min.js` from `dist/`, so stray local build output can't be published.
+
 ## [4.0.0] - 2026-09-12
 
 ### 💥 Breaking Changes

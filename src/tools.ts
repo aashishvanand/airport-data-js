@@ -163,7 +163,7 @@ export const airportTools: ToolDefinition[] = [
     },
     {
         name: 'getAutocompleteSuggestions',
-        description: 'Get autocomplete suggestions for airports based on partial input. Searches by airport name and IATA code. Returns up to 10 results.',
+        description: 'Get autocomplete suggestions for airports based on partial input. Matches IATA/ICAO codes, city names, metro codes, and airport names, with major airports first. Returns up to 10 results.',
         parameters: {
             type: 'object',
             properties: {
@@ -431,6 +431,130 @@ export const airportTools: ToolDefinition[] = [
                 code: {
                     type: 'string',
                     description: 'IATA or ICAO code of the airport'
+                }
+            },
+            required: ['code']
+        }
+    },
+    {
+        name: 'search',
+        description: 'Ranked airport search across codes, cities, and names. Best general-purpose lookup when the user gives a city ("New York", "London"), a metro code ("NYC", "LON"), an airport name ("Heathrow"), or a code. Accent-insensitive and typo-tolerant; major airports with scheduled service rank first. Pass limit/scheduledOnly/country_code as the second (options) argument.',
+        parameters: {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: 'Search text, 2-100 characters (e.g., "new york", "LON", "heathrow", "Zürich")'
+                },
+                limit: {
+                    type: 'number',
+                    description: 'Maximum number of results (1-100, default 10)',
+                    minimum: 1,
+                    maximum: 100
+                },
+                scheduledOnly: {
+                    type: 'boolean',
+                    description: 'Only return airports with scheduled commercial service'
+                },
+                country_code: {
+                    type: 'string',
+                    description: 'Optional 2-letter ISO country code filter (e.g., "US")'
+                }
+            },
+            required: ['query']
+        }
+    },
+    {
+        name: 'getAirportsByCity',
+        description: 'Find airports serving a city by name (case- and accent-insensitive), major airports first. Some airports list their own municipality (e.g., EWR is "Newark"); use getAirportsByCityCode for whole metro areas.',
+        parameters: {
+            type: 'object',
+            properties: {
+                city: {
+                    type: 'string',
+                    description: 'City name (e.g., "London", "São Paulo", "Tokyo")'
+                }
+            },
+            required: ['city']
+        }
+    },
+    {
+        name: 'getAirportsByCityCode',
+        description: 'Find all airports in an IATA city/metropolitan area code (e.g., "NYC" for JFK, LGA, EWR; "LON" for LHR, LGW, STN, LTN, LCY; "TYO" for HND, NRT).',
+        parameters: {
+            type: 'object',
+            properties: {
+                cityCode: {
+                    type: 'string',
+                    description: '3-letter uppercase IATA city code (e.g., "NYC", "LON", "PAR")'
+                }
+            },
+            required: ['cityCode']
+        }
+    },
+    {
+        name: 'getUtcOffset',
+        description: 'Get the real UTC offset in hours at an airport for a given moment, accounting for daylight saving time (e.g., JFK is -4 in July and -5 in December). Prefer this over the static utc field.',
+        parameters: {
+            type: 'object',
+            properties: {
+                code: {
+                    type: 'string',
+                    description: 'IATA or ICAO code of the airport'
+                },
+                date: {
+                    type: 'string',
+                    description: 'Optional ISO 8601 date-time (default: now)'
+                }
+            },
+            required: ['code']
+        }
+    },
+    {
+        name: 'getLocalTime',
+        description: 'Get the current (or a given) local date and time at an airport, with UTC offset and whether daylight saving time is in effect.',
+        parameters: {
+            type: 'object',
+            properties: {
+                code: {
+                    type: 'string',
+                    description: 'IATA or ICAO code of the airport'
+                },
+                date: {
+                    type: 'string',
+                    description: 'Optional ISO 8601 date-time to convert (default: now)'
+                }
+            },
+            required: ['code']
+        }
+    },
+    {
+        name: 'formatAirportTime',
+        description: 'Format a moment as a human-readable string in the airport\'s local time zone and a given locale. Pass date/locale/dateStyle/timeStyle as the second (options) argument.',
+        parameters: {
+            type: 'object',
+            properties: {
+                code: {
+                    type: 'string',
+                    description: 'IATA or ICAO code of the airport'
+                },
+                date: {
+                    type: 'string',
+                    description: 'Optional ISO 8601 date-time to format (default: now)'
+                },
+                locale: {
+                    type: 'string',
+                    description: 'Optional BCP 47 locale (default: "en-US")'
+                },
+                dateStyle: {
+                    type: 'string',
+                    description: 'Optional date style',
+                    enum: ['full', 'long', 'medium', 'short']
+                },
+                timeStyle: {
+                    type: 'string',
+                    description: 'Optional time style',
+                    enum: ['full', 'long', 'medium', 'short']
                 }
             },
             required: ['code']

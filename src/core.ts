@@ -1,5 +1,5 @@
 import { ungzip } from 'pako';
-import airportsPayload from './airports.data.json';
+import { getPayload } from './state';
 
 // ============================================================================
 // Types & Interfaces
@@ -22,7 +22,12 @@ export interface Airport {
     icao: string;
     /** IANA timezone identifier (e.g., "Asia/Singapore") */
     time: string;
-    /** UTC offset in hours (e.g., 8, 5.5, -3.5). A DST-aware snapshot, not a fixed standard offset. */
+    /**
+     * UTC offset in hours (e.g., 8, 5.5, -3.5), captured as a July snapshot.
+     * It does not follow daylight saving time, so it is wrong for roughly half the year
+     * in DST regions. Use {@link getUtcOffset} or {@link getLocalTime} for the real offset at a given moment.
+     * @deprecated Use getUtcOffset(code, date) instead.
+     */
     utc: number;
     /** ISO 3166-1 alpha-2 country code (e.g., "SG", "GB", "US") */
     country_code: string;
@@ -30,6 +35,13 @@ export interface Airport {
     continent: string;
     /** Full airport name (e.g., "Singapore Changi Airport") */
     airport: string;
+    /** City or municipality served (e.g., "Singapore", "New York"). Empty string when unknown. */
+    city: string;
+    /**
+     * IATA city/metropolitan area code (e.g., "NYC" for JFK/LGA/EWR, "LON" for LHR/LGW).
+     * Equals the airport's own IATA code for single-airport cities. Empty string when unknown.
+     */
+    city_code: string;
     /** Latitude in decimal degrees */
     latitude: number;
     /** Longitude in decimal degrees */
@@ -89,6 +101,8 @@ export interface AirportFilters {
     country_code?: string;
     continent?: string;
     airport?: string;
+    city?: string;
+    city_code?: string;
     latitude?: number;
     longitude?: number;
     elevation_ft?: number | null;
@@ -186,6 +200,80 @@ export interface DistanceMatrix {
 /** Sort criteria for ranking airports */
 export type SortBy = 'runway' | 'elevation';
 
+/** Which field a {@link search} result matched on. */
+export type SearchMatchType = 'iata' | 'icao' | 'city_code' | 'city' | 'name' | 'fuzzy';
+
+/** Options for {@link search}. */
+export interface SearchOptions {
+    /** Maximum number of results (1-100, default: 10). */
+    limit?: number;
+    /** Only return airports with scheduled commercial service. */
+    scheduledOnly?: boolean;
+    /** Restrict to these airport types (e.g., ['large_airport', 'medium_airport']). */
+    types?: string[];
+    /** Restrict to a 2-letter country code. */
+    country_code?: string;
+    /** Allow typo-tolerant matching (default: true). */
+    fuzzy?: boolean;
+}
+
+/**
+ * An airport returned by {@link search}, with ranking details.
+ *
+ * @example
+ * ```typescript
+ * const [best] = await search('new york');
+ * console.log(best.iata, best.matchType); // "JFK" "city"
+ * ```
+ */
+export interface AirportSearchResult extends Airport {
+    /** Relevance score; higher is better. Only meaningful for ordering. */
+    score: number;
+    /** The field that produced the match. */
+    matchType: SearchMatchType;
+}
+
+/** A date input accepted by the time functions: a Date, epoch milliseconds, or an ISO string. */
+export type DateInput = Date | number | string;
+
+/**
+ * The local time at an airport for a given instant.
+ *
+ * @example
+ * ```typescript
+ * const t = await getLocalTime('JFK', '2026-11-10T12:00:00Z');
+ * console.log(t?.iso);       // "2026-11-10T07:00:00-05:00"
+ * console.log(t?.utcOffset); // -5
+ * console.log(t?.isDst);     // false
+ * ```
+ */
+export interface AirportLocalTime {
+    /** IANA time zone of the airport (e.g., "America/New_York") */
+    timeZone: string;
+    /** Local date-time with offset in ISO 8601 form (e.g., "2026-11-10T07:00:00-05:00") */
+    iso: string;
+    /** Local calendar date, "YYYY-MM-DD" */
+    date: string;
+    /** Local wall-clock time, "HH:mm:ss" (24-hour) */
+    time: string;
+    /** UTC offset in hours at that instant (e.g., -5, 5.5) */
+    utcOffset: number;
+    /** UTC offset as a string (e.g., "-05:00", "+05:30") */
+    utcOffsetString: string;
+    /** Whether daylight saving time is in effect at that instant */
+    isDst: boolean;
+}
+
+/** Options for {@link formatAirportTime}: any Intl.DateTimeFormat option plus `date` and `locale`. */
+export interface FormatAirportTimeOptions extends Intl.DateTimeFormatOptions {
+    /** The instant to format (default: now). */
+    date?: DateInput;
+    /** BCP 47 locale (default: "en-US"). */
+    locale?: string | string[];
+    dateStyle?: 'full' | 'long' | 'medium' | 'short';
+    timeStyle?: 'full' | 'long' | 'medium' | 'short';
+}
+
 // ============================================================================
 // Internal State
 // ============================================================================
@@ -197,6 +285,17 @@ let countryIndex: Map<string, Airport[]> | null = null;
 let continentIndex: Map<string, Airport[]> | null = null;
 let timezoneIndex: Map<string, Airport[]> | null = null;
 let typeIndex: Map<string, Airport[]> | null = null;
+let cityIndex: Map<string, Airport[]> | null = null;
+let cityCodeIndex: Map<string, Airport[]> | null = null;
+let searchKeys: SearchKey[] | null = null;
+
+interface SearchKey {
+    name: string;
+    nameTokens: string[];
+    city: string;
+    /** City without qualifiers: "Paris (Orly, Val-de-Marne)" -> "paris", "London, Essex" -> "london" */
+    cityBase: string;
+}
 
 interface GeoEntry {
     lat: number;
@@ -251,15 +350,34 @@ function base64ToBytes(base64: string): Uint8Array {
 }
 
 /**
+ * Rebuilds row objects from the columnar payload ({ field: values[] }).
+ * Also accepts a plain array of records.
+ * @private
+ */
+function fromColumns(parsed: Airport[] | Record<string, unknown[]>): Airport[] {
+    if (Array.isArray(parsed)) return parsed;
+    const fields = Object.keys(parsed);
+    const columns = fields.map(f => parsed[f]);
+    const length = columns.length > 0 ? columns[0].length : 0;
+    const rows: Airport[] = new Array(length);
+    for (let i = 0; i < length; i++) {
+        const row: Record<string, unknown> = {};
+        for (let f = 0; f < fields.length; f++) row[fields[f]] = columns[f][i];
+        rows[i] = row as unknown as Airport;
+    }
+    return rows;
+}
+
+/**
  * Decompresses the gzipped airport data into a usable array.
  * Lazy loads the data on first access.
  * @private
  */
 function getData(): Airport[] {
     if (!airportsData) {
-        const bytes = base64ToBytes(airportsPayload.gzip);
+        const bytes = base64ToBytes(getPayload().gzip);
         const json = ungzip(bytes, { toText: true } as const);
-        airportsData = JSON.parse(json) as Airport[];
+        airportsData = fromColumns(JSON.parse(json));
     }
     return airportsData;
 }
@@ -405,6 +523,139 @@ function getTypeIndex(): Map<string, Airport[]> {
 }
 
 /**
+ * Lowercases, strips diacritics (Zürich -> zurich), and collapses punctuation/whitespace.
+ * @private
+ */
+function normalizeText(value: string): string {
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+}
+
+/**
+ * Strips qualifiers from a municipality name: "Paris (Orly, Val-de-Marne)" -> "Paris".
+ * @private
+ */
+function cityBase(city: string): string {
+    return city.split(/[(,]/)[0].trim();
+}
+
+/**
+ * Builds and returns an index of airports by normalized city name.
+ * @private
+ */
+function getCityIndex(): Map<string, Airport[]> {
+    if (!cityIndex) {
+        cityIndex = new Map();
+        for (const airport of getData()) {
+            if (!airport.city) continue;
+            const keys = new Set([normalizeText(airport.city), normalizeText(cityBase(airport.city))]);
+            for (const key of keys) {
+                if (!key) continue;
+                if (!cityIndex.has(key)) cityIndex.set(key, []);
+                cityIndex.get(key)!.push(airport);
+            }
+        }
+    }
+    return cityIndex;
+}
+
+/**
+ * Builds and returns an index of airports by IATA city/metro code.
+ * @private
+ */
+function getCityCodeIndex(): Map<string, Airport[]> {
+    if (!cityCodeIndex) {
+        cityCodeIndex = new Map();
+        for (const airport of getData()) {
+            if (!airport.city_code) continue;
+            if (!cityCodeIndex.has(airport.city_code)) cityCodeIndex.set(airport.city_code, []);
+            cityCodeIndex.get(airport.city_code)!.push(airport);
+        }
+    }
+    return cityCodeIndex;
+}
+
+/**
+ * Pre-computes normalized name/city strings for search, aligned with getData() indices.
+ * @private
+ */
+function getSearchKeys(): SearchKey[] {
+    if (!searchKeys) {
+        searchKeys = getData().map(airport => {
+            const name = normalizeText(airport.airport || '');
+            const city = airport.city || '';
+            return {
+                name,
+                nameTokens: name.split(' ').filter(Boolean),
+                city: normalizeText(city),
+                cityBase: normalizeText(cityBase(city)),
+            };
+        });
+    }
+    return searchKeys;
+}
+
+/**
+ * Importance bonus used to break ties in ranking: bigger, scheduled airports first,
+ * then airports with an IATA code, then longer runways (0-16 points).
+ * Stays well below the gap between search tiers.
+ * @private
+ */
+function importanceScore(airport: Airport): number {
+    let score = airport.iata ? 15 : 0;
+    if (typeof airport.runway_length === 'number' && airport.runway_length > 0) {
+        score += Math.min(airport.runway_length, 16000) / 1000;
+    }
+    switch (airport.type) {
+        case 'large_airport': score += 60; break;
+        case 'medium_airport': score += 30; break;
+        case 'small_airport': score += 10; break;
+        case 'closed': score -= 100; break;
+        default: score -= 10;
+    }
+    if (hasScheduledService(airport)) score += 40;
+    return score;
+}
+
+/**
+ * Sorts airports by importance (descending), keeping dataset order for ties.
+ * @private
+ */
+function sortByImportance(airports: Airport[]): Airport[] {
+    return airports
+        .map((airport, i) => ({ airport, i, score: importanceScore(airport) }))
+        .sort((a, b) => b.score - a.score || a.i - b.i)
+        .map(entry => entry.airport);
+}
+
+/**
+ * Levenshtein distance with an early exit once it exceeds `max`.
+ * @private
+ */
+function boundedEditDistance(a: string, b: string, max: number): number {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    let prev = new Array<number>(b.length + 1);
+    let curr = new Array<number>(b.length + 1);
+    for (let j = 0; j <= b.length; j++) prev[j] = j;
+    for (let i = 1; i <= a.length; i++) {
+        curr[0] = i;
+        let rowMin = curr[0];
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
+            curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+            if (curr[j] < rowMin) rowMin = curr[j];
+        }
+        if (rowMin > max) return max + 1;
+        [prev, curr] = [curr, prev];
+    }
+    return prev[b.length];
+}
+
+/**
  * Returns a shallow copy of an airport object to prevent mutation of cached data.
  * @private
  */
@@ -494,7 +745,7 @@ function _getAirportByCodeDirect(code: string): Airport | null {
  */
 const ALLOWED_FILTER_KEYS = new Set<string>([
     'iata', 'icao', 'time', 'utc', 'country_code', 'continent',
-    'airport', 'latitude', 'longitude', 'elevation_ft',
+    'airport', 'city', 'city_code', 'latitude', 'longitude', 'elevation_ft',
     'type', 'scheduled_service', 'wikipedia', 'website',
     'runway_length', 'flightradar24_url', 'radarbox_url', 'flightaware_url',
     'has_scheduled_service', 'min_runway_ft'
@@ -696,7 +947,8 @@ export async function getAirportByContinent(continentCode: string = ''): Promise
 }
 
 /**
- * Searches for airports by name. Case-insensitive partial matching.
+ * Searches for airports by name. Case- and accent-insensitive partial matching
+ * ("Zurich" matches "Zürich"). For city-aware, ranked results use {@link search}.
  *
  * @param query - The name or partial name to search for (2-100 characters).
  * @returns Array of matching airport objects.
@@ -715,10 +967,10 @@ export async function searchByName(query: string = ''): Promise<Airport[]> {
     if (query.length > 100) {
         throw new Error("Search query must not exceed 100 characters.");
     }
-    const lowerCaseQuery = query.toLowerCase();
-    const results = getData().filter(item =>
-        item.airport.toLowerCase().includes(lowerCaseQuery)
-    );
+    const normalizedQuery = normalizeText(query);
+    if (!normalizedQuery) return [];
+    const keys = getSearchKeys();
+    const results = getData().filter((_, i) => keys[i].name.includes(normalizedQuery));
     return copyAirports(results);
 }
 
@@ -846,7 +1098,8 @@ export async function calculateDistance(code1: string, code2: string): Promise<n
 
 /**
  * Provides autocomplete suggestions based on a partial query.
- * Searches by airport name and IATA code. Returns up to 10 results.
+ * Matches IATA/ICAO codes, city names, city codes, and airport names, ranked like {@link search}
+ * (major airports with scheduled service first). Returns up to 10 results.
  *
  * @param query - The partial query string (2-100 characters).
  * @returns Array of up to 10 matching airports.
@@ -861,19 +1114,394 @@ export async function getAutocompleteSuggestions(query: string = ''): Promise<Ai
     if (typeof query !== 'string' || query.length < 2 || query.length > 100) {
         return [];
     }
-    const lowerCaseQuery = query.toLowerCase();
+    return _search(query, { limit: 10, fuzzy: false }).map(({ airport }) => copyAirport(airport));
+}
+
+// ============================================================================
+// City & Ranked Search
+// ============================================================================
+
+/**
+ * Former, English, and local city names that differ from the municipality stored in the data,
+ * mapped to IATA city codes (keys are normalized: lowercase, no accents).
+ * @private
+ */
+const CITY_ALIASES: Record<string, string[]> = {
+    // Former names
+    'bangalore': ['BLR'], 'bombay': ['BOM'], 'madras': ['MAA'], 'calcutta': ['CCU'],
+    'poona': ['PNQ'], 'trivandrum': ['TRV'], 'cochin': ['COK'], 'peking': ['BJS'],
+    'canton': ['CAN'], 'saigon': ['SGN'], 'rangoon': ['RGN'], 'kiev': ['IEV'],
+    'leningrad': ['LED'],
+    // English names where the data uses a local or district name
+    'delhi': ['DEL'], 'goa': ['GOI', 'GOX'], 'athens': ['ATH'], 'brussels': ['BRU'],
+    'taipei': ['TPE'], 'nagoya': ['NGO'], 'macau': ['MFM'], 'macao': ['MFM'],
+    'florence': ['FLR'], 'venice': ['VCE'], 'naples': ['NAP'], 'cologne': ['CGN'],
+    'saint petersburg': ['LED'], 'st petersburg': ['LED'], 'rio': ['RIO'],
+    // Local names where the data uses the English name
+    'roma': ['ROM'], 'milano': ['MIL'], 'moskva': ['MOW'], 'wien': ['VIE'],
+    'praha': ['PRG'], 'lisboa': ['LIS'], 'geneve': ['GVA'], 'bruxelles': ['BRU'],
+    'munchen': ['MUC'], 'koln': ['CGN'],
+};
+
+const MATCH_SCORES: Record<SearchMatchType, number> = {
+    iata: 10000,
+    icao: 9500,
+    city_code: 9000,
+    city: 8000,
+    name: 0, // name scores are tiered below
+    fuzzy: 1000,
+};
+
+/**
+ * Internal ranked search returning references (no copies).
+ * @private
+ */
+function _search(query: string, options: SearchOptions = {}): Array<{ airport: Airport; score: number; matchType: SearchMatchType }> {
+    const limit = options.limit ?? 10;
+    const allowFuzzy = options.fuzzy !== false;
+    const typeFilter = options.types && options.types.length > 0 ? new Set(options.types.map(t => t.toLowerCase())) : null;
+
+    const q = normalizeText(query);
+    if (q.length < 2) return [];
+    const upper = query.trim().toUpperCase();
+    const qTokens = q.split(' ');
+    const maxEdits = q.length >= 8 ? 2 : q.length >= 4 ? 1 : 0;
 
     const data = getData();
-    const results: Airport[] = [];
-    for (let i = 0; i < data.length && results.length < 10; i++) {
-        const item = data[i];
-        if (item.airport.toLowerCase().includes(lowerCaseQuery) ||
-            item.iata.toLowerCase().includes(lowerCaseQuery)) {
-            results.push(copyAirport(item));
+    const keys = getSearchKeys();
+    const scored: Array<{ airport: Airport; score: number; matchType: SearchMatchType; i: number }> = [];
+    const passes = (airport: Airport): boolean =>
+        !(options.scheduledOnly && !hasScheduledService(airport)) &&
+        !(typeFilter && !typeFilter.has((airport.type || '').toLowerCase())) &&
+        !(options.country_code && airport.country_code !== options.country_code);
+    const matchedCityCodes = new Set<string>(CITY_ALIASES[q] || []);
+
+    for (let i = 0; i < data.length; i++) {
+        const airport = data[i];
+        if (!passes(airport)) continue;
+
+        const key = keys[i];
+        let score = -1;
+        let matchType: SearchMatchType = 'name';
+
+        if (airport.iata && airport.iata === upper) {
+            score = MATCH_SCORES.iata; matchType = 'iata';
+        } else if (airport.icao && airport.icao === upper) {
+            score = MATCH_SCORES.icao; matchType = 'icao';
+        } else if (airport.city_code && airport.city_code === upper && upper.length === 3) {
+            score = MATCH_SCORES.city_code; matchType = 'city_code';
+        } else if (key.city && (key.city === q || key.cityBase === q)) {
+            score = MATCH_SCORES.city; matchType = 'city';
+            if (airport.city_code && airport.type !== 'closed') matchedCityCodes.add(airport.city_code);
+        } else if (key.city && key.city.startsWith(q)) {
+            score = 7000; matchType = 'city';
+        } else if (key.name.startsWith(q)) {
+            score = 6500; matchType = 'name';
+        } else if (qTokens.every(t => key.nameTokens.some(n => n.startsWith(t)))) {
+            score = 5000; matchType = 'name';
+        } else if (key.name.includes(q) || (key.city && key.city.includes(q))) {
+            score = 4000; matchType = key.name.includes(q) ? 'name' : 'city';
+        } else if (airport.iata && q.length === 2 && airport.iata.startsWith(upper)) {
+            score = 3000; matchType = 'iata';
+        } else if (allowFuzzy && maxEdits > 0) {
+            let best = maxEdits + 1;
+            if (key.city) best = boundedEditDistance(q, key.city, maxEdits);
+            if (best > maxEdits && qTokens.length === 1) {
+                for (const token of key.nameTokens) {
+                    const d = boundedEditDistance(q, token, maxEdits);
+                    if (d < best) best = d;
+                    if (best === 1) break;
+                }
+            }
+            if (best <= maxEdits) {
+                score = MATCH_SCORES.fuzzy - best * 200; matchType = 'fuzzy';
+            }
+        }
+
+        if (score < 0) continue;
+        scored.push({ airport, score: score + importanceScore(airport), matchType, i });
+    }
+
+    // Metro expansion: an exact city match ("new york") also pulls in the other airports of
+    // that city's IATA metro code (EWR is listed under "Newark" but belongs to NYC).
+    if (matchedCityCodes.size > 0) {
+        const byAirport = new Map(scored.map(entry => [entry.airport, entry]));
+        let indexOf: Map<Airport, number> | null = null;
+        for (const code of matchedCityCodes) {
+            for (const airport of getCityCodeIndex().get(code) || []) {
+                if (!passes(airport)) continue;
+                const score = MATCH_SCORES.city + importanceScore(airport);
+                const existing = byAirport.get(airport);
+                if (existing) {
+                    if (existing.score < score) {
+                        existing.score = score;
+                        existing.matchType = 'city_code';
+                    }
+                    continue;
+                }
+                if (!indexOf) {
+                    indexOf = new Map();
+                    data.forEach((a, i) => indexOf!.set(a, i));
+                }
+                const entry = { airport, score, matchType: 'city_code' as SearchMatchType, i: indexOf.get(airport)! };
+                scored.push(entry);
+                byAirport.set(airport, entry);
+            }
         }
     }
 
-    return results;
+    scored.sort((a, b) => b.score - a.score || a.i - b.i);
+    return scored.slice(0, limit).map(({ airport, score, matchType }) => ({ airport, score, matchType }));
+}
+
+/**
+ * Unified, ranked airport search across codes, cities, and names.
+ *
+ * Ranking: exact IATA > exact ICAO > IATA city/metro code ("NYC", "LON") > exact city >
+ * city prefix > name prefix > name word prefix > substring > typo-tolerant match.
+ * Within each tier, large airports with scheduled service rank first.
+ * Matching is case- and accent-insensitive ("zurich" finds "Zürich").
+ *
+ * @param query - Search text (2-100 characters): a code, a city, or part of a name.
+ * @param options - Optional limit and filters.
+ * @returns Ranked results, each with a `score` and `matchType`.
+ * @throws If the query is too short/long or the limit is out of range.
+ *
+ * @example
+ * ```typescript
+ * const results = await search('New York');
+ * console.log(results.map(a => a.iata)); // ["JFK", "LGA", ...]
+ *
+ * await search('LON');                           // LHR, LGW, STN, LTN, LCY...
+ * await search('heathrow');                      // LHR
+ * await search('frankfrut');                     // typo-tolerant: FRA
+ * await search('paris', { scheduledOnly: true, limit: 3 });
+ * ```
+ */
+export async function search(query: string = '', options: SearchOptions = {}): Promise<AirportSearchResult[]> {
+    if (typeof query !== 'string' || query.trim().length < 2) {
+        throw new Error("Search query must be at least 2 characters long.");
+    }
+    if (query.length > 100) {
+        throw new Error("Search query must not exceed 100 characters.");
+    }
+    const limit = options.limit ?? 10;
+    if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+        throw new Error("Invalid limit. Must be an integer between 1 and 100.");
+    }
+    return _search(query, { ...options, limit }).map(({ airport, score, matchType }) => ({
+        ...airport,
+        score: Math.round(score * 100) / 100,
+        matchType,
+    }));
+}
+
+/**
+ * Finds airports serving a city. Case- and accent-insensitive exact match on the city name,
+ * ordered with major scheduled-service airports first. Common former and alternative names
+ * are recognized ("Bombay", "Bangalore", "Peking", "Athens", "Roma").
+ *
+ * Note that some airports list the municipality they sit in rather than the metro area they
+ * serve (e.g., EWR is "Newark"). Use {@link getAirportsByCityCode} for metro-area lookups.
+ *
+ * @param city - City name (e.g., "London", "São Paulo", "sao paulo").
+ * @returns Array of matching airports (empty if none).
+ * @throws If the city is not a non-empty string.
+ *
+ * @example
+ * ```typescript
+ * const airports = await getAirportsByCity('London');
+ * console.log(airports[0].iata); // "LHR"
+ * ```
+ */
+export async function getAirportsByCity(city: string = ''): Promise<Airport[]> {
+    if (typeof city !== 'string' || normalizeText(city).length === 0) {
+        throw new Error("City must be a non-empty string.");
+    }
+    const key = normalizeText(city);
+    const results = new Set(getCityIndex().get(key) || []);
+    for (const code of CITY_ALIASES[key] || []) {
+        for (const airport of getCityCodeIndex().get(code) || []) results.add(airport);
+    }
+    return copyAirports(sortByImportance([...results]));
+}
+
+/**
+ * Finds all airports sharing an IATA city/metropolitan area code
+ * (e.g., "NYC" → JFK, LGA, EWR; "LON" → LHR, LGW, STN, LTN, LCY, SEN).
+ * Ordered with major scheduled-service airports first.
+ *
+ * @param cityCode - 3-letter uppercase IATA city code.
+ * @returns Array of matching airports (empty if none).
+ * @throws If the code format is invalid.
+ *
+ * @example
+ * ```typescript
+ * const nyc = await getAirportsByCityCode('NYC');
+ * console.log(nyc.map(a => a.iata)); // ["JFK", "EWR", "LGA", ...]
+ * ```
+ */
+export async function getAirportsByCityCode(cityCode: string = ''): Promise<Airport[]> {
+    validateRegex(cityCode, /^[A-Z]{3}$/, "Invalid city code format. Please provide a 3-letter uppercase code, e.g., 'NYC'.");
+    const results = getCityCodeIndex().get(cityCode) || [];
+    return copyAirports(sortByImportance(results));
+}
+
+// ============================================================================
+// Time Zone & Local Time
+// ============================================================================
+
+const partsFormatterCache = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Converts a DateInput to a valid Date.
+ * @private
+ */
+function toDate(input: DateInput | undefined): Date {
+    const date = input === undefined ? new Date() : input instanceof Date ? new Date(input.getTime()) : new Date(input);
+    if (isNaN(date.getTime())) {
+        throw new Error("Invalid date. Provide a Date, epoch milliseconds, or an ISO 8601 string.");
+    }
+    return date;
+}
+
+/**
+ * Returns local wall-clock parts and the UTC offset (minutes) of `date` in `timeZone`.
+ * Works on every runtime with Intl time zone support (no `longOffset` needed).
+ * @private
+ */
+function zonedParts(timeZone: string, date: Date) {
+    let fmt = partsFormatterCache.get(timeZone);
+    if (!fmt) {
+        fmt = new Intl.DateTimeFormat('en-US', {
+            timeZone,
+            hourCycle: 'h23',
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+        });
+        partsFormatterCache.set(timeZone, fmt);
+    }
+    const p: Record<string, number> = {};
+    for (const part of fmt.formatToParts(date)) {
+        if (part.type !== 'literal') p[part.type] = Number(part.value);
+    }
+    const hour = p.hour === 24 ? 0 : p.hour;
+    const asUtc = Date.UTC(p.year, p.month - 1, p.day, hour, p.minute, p.second);
+    const offsetMinutes = Math.round((asUtc - Math.floor(date.getTime() / 1000) * 1000) / 60000);
+    return { year: p.year, month: p.month, day: p.day, hour, minute: p.minute, second: p.second, offsetMinutes };
+}
+
+/**
+ * Formats an offset in minutes as "+HH:MM".
+ * @private
+ */
+function formatOffset(minutes: number): string {
+    const sign = minutes < 0 ? '-' : '+';
+    const abs = Math.abs(minutes);
+    return `${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Resolves an airport's time zone, or null if the airport is unknown.
+ * @private
+ */
+function _getTimeZone(code: string): string | null {
+    const airport = _getAirportByCodeDirect(code);
+    return airport && airport.time ? airport.time : null;
+}
+
+/**
+ * Gets an airport's real UTC offset at a given moment, accounting for daylight saving time.
+ * Prefer this over the static `utc` field, which is a July snapshot.
+ *
+ * @param code - IATA or ICAO code.
+ * @param date - The instant to evaluate (default: now).
+ * @returns Offset in hours (e.g., -5, 5.5), or null if the airport is not found.
+ * @throws If the date is invalid.
+ *
+ * @example
+ * ```typescript
+ * await getUtcOffset('JFK', '2026-07-01T12:00:00Z'); // -4 (EDT)
+ * await getUtcOffset('JFK', '2026-12-01T12:00:00Z'); // -5 (EST)
+ * await getUtcOffset('DEL');                          // 5.5
+ * ```
+ */
+export async function getUtcOffset(code: string, date?: DateInput): Promise<number | null> {
+    const timeZone = _getTimeZone(code);
+    if (!timeZone) return null;
+    return zonedParts(timeZone, toDate(date)).offsetMinutes / 60;
+}
+
+/**
+ * Gets the local date and time at an airport, accounting for daylight saving time.
+ *
+ * @param code - IATA or ICAO code.
+ * @param date - The instant to convert (default: now).
+ * @returns Local time details, or null if the airport is not found.
+ * @throws If the date is invalid.
+ *
+ * @example
+ * ```typescript
+ * const t = await getLocalTime('LHR', '2026-07-01T12:00:00Z');
+ * console.log(t?.iso);   // "2026-07-01T13:00:00+01:00"
+ * console.log(t?.isDst); // true
+ * ```
+ */
+export async function getLocalTime(code: string, date?: DateInput): Promise<AirportLocalTime | null> {
+    const timeZone = _getTimeZone(code);
+    if (!timeZone) return null;
+    const instant = toDate(date);
+    const p = zonedParts(timeZone, instant);
+
+    // DST is in effect when the current offset is above the zone's standard (lower) offset this year.
+    const jan = zonedParts(timeZone, new Date(Date.UTC(p.year, 0, 1))).offsetMinutes;
+    const jul = zonedParts(timeZone, new Date(Date.UTC(p.year, 6, 1))).offsetMinutes;
+    const isDst = jan !== jul && p.offsetMinutes === Math.max(jan, jul);
+
+    const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+    const dateStr = `${pad(p.year, 4)}-${pad(p.month)}-${pad(p.day)}`;
+    const timeStr = `${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)}`;
+    const offsetStr = formatOffset(p.offsetMinutes);
+
+    return {
+        timeZone,
+        iso: `${dateStr}T${timeStr}${offsetStr}`,
+        date: dateStr,
+        time: timeStr,
+        utcOffset: p.offsetMinutes / 60,
+        utcOffsetString: offsetStr,
+        isDst,
+    };
+}
+
+/**
+ * Formats an instant in an airport's local time using `Intl.DateTimeFormat`.
+ *
+ * @param code - IATA or ICAO code.
+ * @param options - `date` (default: now), `locale` (default: "en-US"), and any
+ *   Intl.DateTimeFormat options. Defaults to `{ dateStyle: 'medium', timeStyle: 'short' }`
+ *   when no date/time fields are given.
+ * @returns The formatted string, or null if the airport is not found.
+ * @throws If the date is invalid.
+ *
+ * @example
+ * ```typescript
+ * await formatAirportTime('NRT', { date: '2026-11-10T00:00:00Z' });
+ * // "Nov 10, 2026, 9:00 AM"
+ * await formatAirportTime('CDG', { locale: 'fr-FR', timeStyle: 'short' });
+ * // "14:05"
+ * ```
+ */
+export async function formatAirportTime(code: string, options: FormatAirportTimeOptions = {}): Promise<string | null> {
+    const timeZone = _getTimeZone(code);
+    if (!timeZone) return null;
+    const { date, locale = 'en-US', ...intlOptions } = options;
+    const hasFields = ['dateStyle', 'timeStyle', 'year', 'month', 'day', 'weekday', 'hour', 'minute', 'second', 'era', 'timeZoneName', 'dayPeriod', 'fractionalSecondDigits']
+        .some(k => (intlOptions as Record<string, unknown>)[k] !== undefined);
+    const formatOptions: Intl.DateTimeFormatOptions = hasFields
+        ? { ...intlOptions, timeZone }
+        : { dateStyle: 'medium', timeStyle: 'short', ...intlOptions, timeZone };
+    return new Intl.DateTimeFormat(locale, formatOptions).format(toDate(date));
 }
 
 /**
@@ -1370,9 +1998,3 @@ export async function isAirportOperational(code: string): Promise<boolean> {
     }
     return hasScheduledService(airport);
 }
-
-/**
- * @module airport-data
- * @description A comprehensive TypeScript library for airport data lookup by IATA, ICAO,
- * country, continent, timezone, coordinates, and more. Includes LLM-friendly typed interfaces.
- */
