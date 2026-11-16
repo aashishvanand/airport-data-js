@@ -326,3 +326,38 @@ describe('ESM entry points', () => {
         expect(Array.isArray(esmTools.airportTools)).toBe(true);
     });
 });
+
+describe('Review fixes', () => {
+    test('findNearbyAirports finds airports across the pole', async () => {
+        // YLT (82.5, -62.3) is ~1388 km from (85, 117.72), on the other side of the North Pole
+        const airports: Airport[] = await lib.findNearbyAirports(85, 117.72, 1450);
+        expect(airports.some(a => a.iata === 'YLT')).toBe(true);
+    });
+
+    test('inherited object keys are not treated as city aliases', async () => {
+        expect(await lib.search('constructor')).toEqual([]);
+        expect(await lib.getAutocompleteSuggestions('constructor')).toEqual([]);
+        expect(await lib.getAirportsByCity('constructor')).toEqual([]);
+    });
+
+    test('autocomplete matches ICAO prefixes', async () => {
+        const suggestions: Airport[] = await lib.getAutocompleteSuggestions('EGL');
+        expect(suggestions.some(a => a.icao === 'EGLL')).toBe(true);
+    });
+
+    test('search tool declares limit as an integer', () => {
+        const { airportTools } = require('../lib/tools.js');
+        const tool = airportTools.find((t: { name: string }) => t.name === 'search');
+        expect(tool.parameters.properties.limit.type).toBe('integer');
+    });
+
+    test('JPN (Pentagon) is in the Washington DC metro area', async () => {
+        const was: Airport[] = await lib.getAirportsByCityCode('WAS');
+        expect(was.some(a => a.iata === 'JPN')).toBe(true);
+    });
+
+    test('ANM (Antsirabato) serves Antalaha', async () => {
+        const [anm]: Airport[] = await lib.getAirportByIata('ANM');
+        expect(anm.city).toBe('Antalaha');
+    });
+});

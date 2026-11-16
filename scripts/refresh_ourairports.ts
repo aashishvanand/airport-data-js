@@ -37,11 +37,15 @@ const SEATSAERO_JSON = path.join(ROOT, 'data_source/seatsaero_new.json');
 /** IATA metro assignments that the city-code source is missing (keyed by airport IATA). */
 const CITY_CODE_OVERRIDES: Record<string, string> = {
     EWR: 'NYC',
+    JPN: 'WAS', // Pentagon; the source lists OCW (Washington, NC)
+    LNQ: 'LNQ', // coordinates corrected; the source still has the old position
+    MPT: 'MPT', // coordinates corrected; the source still has the old position
 };
 
 /** City names where the OurAirports municipality is misleading (keyed by ICAO). */
 const CITY_OVERRIDES: Record<string, string> = {
     KTKI: 'McKinney', // OurAirports lists "Dallas"
+    FMNH: 'Antalaha', // Antsirabato Airport; OurAirports lists "Antsirabe", 500+ km away
 };
 
 /**
@@ -61,6 +65,10 @@ const MAX_MATCH_DISTANCE_KM = 50;
 const UTC_SNAPSHOT_DATE = new Date(Date.UTC(2024, 6, 15, 12));
 
 const TYPES_ALLOWED_FOR_AUTO_ADD = new Set(['large_airport', 'medium_airport', 'small_airport']);
+
+function isAutoAddEligible(row: OARow): boolean {
+    return row.scheduled_service === 'yes' && TYPES_ALLOWED_FOR_AUTO_ADD.has(row.type);
+}
 
 interface OARow {
     ident: string;
@@ -221,7 +229,11 @@ async function main(): Promise<void> {
         for (const code of [row.gps_code, row.icao_code, row.ident]) {
             if (code && !oaByCode.has(code)) oaByCode.set(code, row);
         }
-        if (row.iata_code && !oaByIata.has(row.iata_code)) oaByIata.set(row.iata_code, row);
+        // IATA codes can repeat; prefer a row that is eligible for auto-add over one that is not.
+        const current = row.iata_code ? oaByIata.get(row.iata_code) : undefined;
+        if (row.iata_code && (!current || (!isAutoAddEligible(current) && isAutoAddEligible(row)))) {
+            oaByIata.set(row.iata_code, row);
+        }
     }
 
     const usedIata = new Set(data.map(a => a.iata).filter(Boolean));
@@ -244,7 +256,8 @@ async function main(): Promise<void> {
                 : undefined;
         const oa = near(airport.icao ? oaByCode.get(String(airport.icao)) : undefined) || near(airport.iata ? oaByIata.get(airport.iata) : undefined);
 
-        const city = CITY_OVERRIDES[String(airport.icao)] ?? (oa?.municipality?.trim() || '');
+        // Keep the existing city when OurAirports has no replacement.
+        const city = CITY_OVERRIDES[String(airport.icao)] ?? (oa?.municipality?.trim() || airport.city || '');
         if (city !== (airport.city ?? '')) log.cityFilled++;
         airport.city = city;
 
@@ -295,7 +308,7 @@ async function main(): Promise<void> {
     for (const [iata, row] of oaByIata) {
         if (usedIata.has(iata) || !/^[A-Z]{3}$/.test(iata)) continue;
         const explicit = EXTRA_ADDS.has(iata);
-        const auto = row.scheduled_service === 'yes' && TYPES_ALLOWED_FOR_AUTO_ADD.has(row.type);
+        const auto = isAutoAddEligible(row);
         if (!explicit && !auto) continue;
 
         const icao = icaoFor(row);

@@ -6596,7 +6596,7 @@
     "flightradar24_url": "https://www.flightradar24.com/airport/ANM",
     "radarbox_url": "https://www.radarbox.com/airport/FMNH",
     "flightaware_url": "https://www.flightaware.com/live/airport/FMNH",
-    "city": "Antsirabe",
+    "city": "Antalaha",
     "city_code": "ANM"
   },
   {
@@ -83289,7 +83289,7 @@
     "radarbox_url": "",
     "flightaware_url": "",
     "city": "Washington DC",
-    "city_code": "OCW"
+    "city_code": "WAS"
   },
   {
     "iata": "JPO",
@@ -116420,7 +116420,7 @@
     "flightradar24_url": "https://www.flightradar24.com/airport/MPT",
     "radarbox_url": "https://www.radarbox.com/airport/WPMN",
     "flightaware_url": "https://www.flightaware.com/live/airport/WPMN",
-    "city": "",
+    "city": "Maliana",
     "city_code": "MPT"
   },
   {
@@ -284852,7 +284852,7 @@
     "flightradar24_url": "",
     "radarbox_url": "https://www.radarbox.com/airport/1Q9",
     "flightaware_url": "https://www.flightaware.com/live/airport/1Q9",
-    "city": "",
+    "city": "Mili Island",
     "city_code": ""
   },
   {
@@ -309822,7 +309822,7 @@
     "flightradar24_url": "",
     "radarbox_url": "https://www.radarbox.com/airport/03N",
     "flightaware_url": "https://www.flightaware.com/live/airport/03N",
-    "city": "",
+    "city": "Utirik Island",
     "city_code": ""
   },
   {

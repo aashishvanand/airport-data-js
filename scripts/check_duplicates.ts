@@ -138,7 +138,7 @@ airportsData.forEach(airport => {
     if (!isValidTimeZone(airport.time)) {
         badTimezone.push({ code: label, reason: `time=${JSON.stringify(airport.time)}` });
     }
-    if (typeof airport.city !== 'string' || (airport.city_code !== '' && !/^[A-Z]{3}$/.test(airport.city_code ?? ''))) {
+    if (typeof airport.city !== 'string' || typeof airport.city_code !== 'string' || (airport.city_code !== '' && !/^[A-Z]{3}$/.test(airport.city_code))) {
         badCity.push({ code: label, reason: `city=${JSON.stringify(airport.city)} city_code=${JSON.stringify(airport.city_code)}` });
     }
     if (typeof airport.icao !== 'string' || typeof airport.iata !== 'string') {

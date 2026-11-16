@@ -447,7 +447,7 @@ export const airportTools: ToolDefinition[] = [
                     description: 'Search text, 2-100 characters (e.g., "new york", "LON", "heathrow", "Zürich")'
                 },
                 limit: {
-                    type: 'number',
+                    type: 'integer',
                     description: 'Maximum number of results (1-100, default 10)',
                     minimum: 1,
                     maximum: 100

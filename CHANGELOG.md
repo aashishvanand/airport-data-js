@@ -21,18 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔄 Changes
 
-- **`getAutocompleteSuggestions`** now uses the `search` ranking (codes, cities, metro codes and names; major airports first) instead of returning the first 10 name/IATA substring matches in dataset order.
+- **`getAutocompleteSuggestions`** now uses the `search` ranking (codes, cities, metro codes and names; major airports first) instead of returning the first 10 name/IATA substring matches in dataset order. Partial ICAO codes also match (`EGL` suggests `EGLL`).
 - **`searchByName`** is now accent-insensitive.
 - **`Airport.utc`** is marked `@deprecated`: it is a July snapshot and is wrong for about half the year in DST regions (8,434 airports on 2026-11-10). Use `getUtcOffset`.
 - The bundled dataset is now stored column by column, which cuts the full bundle from ~1.5 MB to ~1.3 MB with no API change.
 
 ### 🐛 Fixes
 
-- **`findNearbyAirports`** now finds airports across the ±180° antimeridian. The longitude pre-filter compared raw values, so a search at -179.99° skipped airports at +179.87° (e.g. Taveuni, Fiji) ([#207](https://github.com/aashishvanand/airport-data-js/issues/207)).
+- **`findNearbyAirports`** now finds airports across the ±180° antimeridian. The longitude pre-filter compared raw values, so a search at -179.99° skipped airports at +179.87° (e.g. Taveuni, Fiji) ([#207](https://github.com/aashishvanand/airport-data-js/issues/207)). Searches whose circle contains a pole now cover every longitude, and the longitude bound is exact for large radii.
 - **Continents** — 238 records corrected. Each country now has one continent, except countries split by geography: Hawaii is `OC` ([#195](https://github.com/aashishvanand/airport-data-js/issues/195): OGG, BSF, HDH, HIK, WKL, Tern Island); Russia is split at the Urals (60°E; 122 records); Turkey at the Bosphorus (IST is `EU`, SAW is `AS`); Egypt's Sinai is `AS` (SSH, ELT, SKV, ...); Spain's Canary Islands, Ceuta and Melilla are `AF`; Colombia's San Andrés and Providencia are `NA`. Also fixed stray values such as UK railway stations in `NA`, German airports in `SA`/`OC` and US airports in `AS`/`AF`/`SA`/`EU`.
 - **QSI, QDY, QSX** (US) — continent, Wikipedia link and elevation had been copied from other airports that share the IATA code (Moshi, Tanzania; New Amsterdam, Guyana; ...). QSI elevation 4,971 → 236 ft, QDY 7,359 → 2,417 ft (renamed "Ryan Field"), QSX 4,128 → 583 ft.
 - **ICAO codes from other airports removed**: BYL (`KBYL`, Liberia), LNQ (`KLNQ`, Papua New Guinea), SCA (`KSCA`, Colombia), LIJ (`ZSLI` is Lishui, China) and Lipetsk Air Base (`UUWL` is Luzhki Heliport). Their RadarBox/FlightAware URLs, which used the wrong code, are cleared.
 - **Coordinates**: MPT (Maliana, Timor-Leste) moved ~100 km from the sea to the airport; LNQ (Loani) corrected per OurAirports.
+- **ANM** (Antsirabato) — city `Antsirabe` → `Antalaha` (the airport is on the northeast coast, 500+ km from Antsirabe).
+- **JPN** (Pentagon) — city code `OCW` (Washington, NC) → `WAS`, so it groups with IAD and DCA.
 - **BIBA, BIBR, BISF** — Icelandic airports filed under Greenland; country `GL` → `IS`.
 - **1Q9 (Mili) and 03N (Utirik)** — Marshall Islands strips filed under `US` with the wrong longitude sign; now `MH`, `Pacific/Majuro`.
 - **KKM** (Khok Kathiam) — time zone `"Asia/ Bangkok"` → `"Asia/Bangkok"`.

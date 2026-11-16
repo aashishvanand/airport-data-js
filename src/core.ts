@@ -1006,12 +1006,14 @@ export async function findNearbyAirports(lat: number, lon: number, radiusKm: num
 
     const latDelta = radiusKm / 111;
     const cosLat = Math.cos(toRad(lat));
-    const lonDelta = cosLat > 0.001 ? radiusKm / (111 * cosLat) : 360;
+    const sinLatDelta = Math.sin(toRad(latDelta));
+    // Exact longitude half-width of the search circle. A circle that contains a pole
+    // (or is wider than a hemisphere) covers every longitude, so skip the pre-filter.
+    const checkLon = latDelta < 90 && sinLatDelta < cosLat;
+    const lonDelta = checkLon ? Math.asin(sinLatDelta / cosLat) * 180 / Math.PI : 360;
 
     const minLat = lat - latDelta;
     const maxLat = lat + latDelta;
-    // Near the poles the box covers every longitude; skip the longitude pre-filter.
-    const checkLon = lonDelta < 180;
 
     const results: Airport[] = [];
 
@@ -1144,6 +1146,11 @@ const CITY_ALIASES: Record<string, string[]> = {
     'munchen': ['MUC'], 'koln': ['CGN'],
 };
 
+/** City codes for an alias; ignores inherited keys such as "constructor". @private */
+function cityAliases(key: string): string[] {
+    return Object.prototype.hasOwnProperty.call(CITY_ALIASES, key) ? CITY_ALIASES[key] : [];
+}
+
 const MATCH_SCORES: Record<SearchMatchType, number> = {
     iata: 10000,
     icao: 9500,
@@ -1175,7 +1182,7 @@ function _search(query: string, options: SearchOptions = {}): Array<{ airport: A
         !(options.scheduledOnly && !hasScheduledService(airport)) &&
         !(typeFilter && !typeFilter.has((airport.type || '').toLowerCase())) &&
         !(options.country_code && airport.country_code !== options.country_code);
-    const matchedCityCodes = new Set<string>(CITY_ALIASES[q] || []);
+    const matchedCityCodes = new Set<string>(cityAliases(q));
 
     for (let i = 0; i < data.length; i++) {
         const airport = data[i];
@@ -1204,6 +1211,8 @@ function _search(query: string, options: SearchOptions = {}): Array<{ airport: A
             score = 4000; matchType = key.name.includes(q) ? 'name' : 'city';
         } else if (airport.iata && q.length === 2 && airport.iata.startsWith(upper)) {
             score = 3000; matchType = 'iata';
+        } else if (airport.icao && upper.length >= 3 && airport.icao.startsWith(upper)) {
+            score = 3000; matchType = 'icao';
         } else if (allowFuzzy && maxEdits > 0) {
             let best = maxEdits + 1;
             if (key.city) best = boundedEditDistance(q, key.city, maxEdits);
@@ -1321,7 +1330,7 @@ export async function getAirportsByCity(city: string = ''): Promise<Airport[]> {
     }
     const key = normalizeText(city);
     const results = new Set(getCityIndex().get(key) || []);
-    for (const code of CITY_ALIASES[key] || []) {
+    for (const code of cityAliases(key)) {
         for (const airport of getCityCodeIndex().get(code) || []) results.add(airport);
     }
     return copyAirports(sortByImportance([...results]));
