@@ -2,10 +2,13 @@ const path = require('path');
 
 module.exports = {
     target: 'web',
-    entry: './.tsbuild/index.js',
+    entry: {
+        'airport-data': './.tsbuild/index.js',
+        'airport-data.lite': './.tsbuild/lite.js'
+    },
     mode: 'production',
     output: {
-        filename: 'airport-data.min.js',
+        filename: '[name].min.js',
         path: path.resolve(__dirname, 'dist'),
         library: 'AirportData',
         libraryTarget: 'umd',
