@@ -69,7 +69,7 @@
     "refresh:data": "tsx scripts/refresh_ourairports.ts"
   },
   "dependencies": {
-    "pako": "^3.0.2"
+    "pako": "^3.0.3"
   },
   "repository": {
     "type": "git",
@@ -116,19 +116,19 @@
     "baseline-browser-mapping": "^2.11.0"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.6",
+    "@babel/core": "^8.1.0",
     "@babel/plugin-transform-modules-commonjs": "^8.0.1",
-    "@babel/preset-env": "^8.0.6",
-    "@types/node": "^26.6.3",
+    "@babel/preset-env": "^8.0.7",
+    "@types/node": "^26.6.6",
     "babel-loader": "^10.1.1",
     "csv-parse": "^7.0.3",
     "fs-extra": "^11.4.1",
     "path-browserify": "^1.0.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2",
-    "webpack": "^5.111.1",
-    "webpack-cli": "^7.2.3"
+    "vitest": "^5.1.0",
+    "webpack": "^5.112.2",
+    "webpack-cli": "^7.3.1"
   },
   "module": "lib/index.mjs"
 }

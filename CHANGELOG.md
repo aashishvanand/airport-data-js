@@ -55,6 +55,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `npm run check:duplicates` now also fails on invalid IANA time zones, malformed `city`/`city_code`, and non-string `iata`/`icao`.
 - The npm package now ships only `dist/airport-data.min.js` and `dist/airport-data.lite.min.js` from `dist/`, so stray local build output can't be published.
 
+### 📦 Dependencies
+
+- Runtime: `pako` 3.0.2 → 3.0.3.
+- Dev: `vitest` 5.0.2 → 5.1.0, `vite` 8.3.1 → 8.3.5, `webpack` 5.111.1 → 5.112.2, `webpack-cli` 7.2.3 → 7.3.1, `@babel/core` 8.0.6 → 8.1.0, `@babel/preset-env` 8.0.6 → 8.0.7, `@types/node` 26.6.3 → 26.6.6.
+- GitHub Actions: `actions/setup-node` 7.0.0 → 7.1.0, `actions/upload-artifact` 7.0.1 → 7.0.2, `ossf/scorecard-action` 2.4.4 → 2.5.0, `github/codeql-action` → 4.38.3.
+
 ## [4.0.0] - 2026-09-12
 
 ### 💥 Breaking Changes
