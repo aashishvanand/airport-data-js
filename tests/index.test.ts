@@ -71,6 +71,17 @@ describe('Airport Data Library (Live Data)', () => {
             expect(airports.length).toBeGreaterThanOrEqual(1);
             expect(airports.some((a: Airport) => a.iata === 'LHR')).toBe(true);
         });
+
+        test('should find airports across the ±180° antimeridian (#207)', async () => {
+            // Taveuni, Fiji: TVU (lon 179.87) is ~19 km from a point at lon -179.99
+            const nearTaveuni: Airport[] = await findNearbyAirports(-16.8, -179.99);
+            expect(nearTaveuni.some((a: Airport) => a.iata === 'TVU')).toBe(true);
+
+            // ICI (lon -179.34) to MFJ (lon 179.93) is ~119 km
+            const [ici]: Airport[] = await getAirportByIata('ICI');
+            const nearIci: Airport[] = await findNearbyAirports(ici.latitude, ici.longitude, 150);
+            expect(nearIci.some((a: Airport) => a.iata === 'MFJ')).toBe(true);
+        });
     });
 
     describe('getAirportsByType', () => {

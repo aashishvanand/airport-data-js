@@ -9,6 +9,59 @@ describe('Data fixes', () => {
         expect(ogg.continent).toBe('OC');
     });
 
+    test('every Hawaiian airport is in Oceania (#195)', async () => {
+        const hawaii: Airport[] = (await lib.findAirports({ country_code: 'US' })).filter((a: Airport) =>
+            a.latitude > 18 && a.latitude < 29 && a.longitude > -179 && a.longitude < -154);
+        expect(hawaii.length).toBeGreaterThan(20);
+        expect(hawaii.filter(a => a.continent !== 'OC').map(a => a.iata || a.icao)).toEqual([]);
+    });
+
+    test('each country has one continent, except countries split by geography', async () => {
+        const all: Airport[] = await lib.findAirports({});
+        const byCountry = new Map<string, Set<string>>();
+        for (const a of all) {
+            if (a.latitude < -60) continue; // Antarctic stations are AN under their operator's country
+            byCountry.set(a.country_code, (byCountry.get(a.country_code) ?? new Set()).add(a.continent));
+        }
+        const mixed = [...byCountry].filter(([, set]) => set.size > 1).map(([c]) => c).sort();
+        expect(mixed).toEqual(['CO', 'EG', 'ES', 'RU', 'TR', 'US']);
+    });
+
+    test.each([
+        ['HNL', 'OC'], ['OGG', 'OC'], ['JFK', 'NA'],
+        ['SVO', 'EU'], ['KGD', 'EU'], ['OVB', 'AS'], ['VVO', 'AS'], ['DYR', 'AS'],
+        ['IST', 'EU'], ['SAW', 'AS'], ['ESB', 'AS'],
+        ['CAI', 'AF'], ['HRG', 'AF'], ['SSH', 'AS'],
+        ['MAD', 'EU'], ['LPA', 'AF'], ['MLN', 'AF'],
+        ['BOG', 'SA'], ['ADZ', 'NA'],
+        ['RHO', 'EU'], ['NIC', 'AS'], ['QQK', 'EU'],
+    ])('%s is in %s', async (iata, continent) => {
+        const [airport]: Airport[] = await lib.getAirportByIata(iata);
+        expect(airport.continent).toBe(continent);
+    });
+
+    test('US airports no longer carry data from airports that share their IATA code', async () => {
+        const [qsi]: Airport[] = await lib.getAirportByIata('QSI'); // Moshi, Tanzania also uses QSI
+        expect(qsi.continent).toBe('NA');
+        expect(qsi.elevation_ft).toBe(236);
+        expect(qsi.wikipedia).toBe('');
+        const [qdy]: Airport[] = await lib.getAirportByIata('QDY');
+        expect(qdy.airport).toBe('Ryan Field');
+        expect(qdy.elevation_ft).toBe(2417);
+    });
+
+    test.each(['BYL', 'LNQ', 'SCA', 'LIJ'])('%s no longer uses an ICAO code from another country', async iata => {
+        const [airport]: Airport[] = await lib.getAirportByIata(iata);
+        expect(airport.icao).toBe('');
+        expect(airport.flightaware_url).toBe('');
+    });
+
+    test('Icelandic airports are filed under Iceland', async () => {
+        const [bisf]: Airport[] = await lib.getAirportByIcao('BISF');
+        expect(bisf.country_code).toBe('IS');
+        expect(bisf.continent).toBe('EU');
+    });
+
     test('every airport has a valid IANA time zone', async () => {
         const all: Airport[] = await lib.findAirports({});
         const zones = new Set(all.map(a => a.time));

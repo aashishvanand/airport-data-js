@@ -8,7 +8,9 @@
  *      has one for the same ICAO and the code is not already used.
  *   3. Adds airports whose IATA code is missing from the dataset when they have
  *      scheduled service (or are listed explicitly with --add).
- *   4. Reports, without changing, IATA codes that differ between the dataset and
+ *   4. Sets `continent` from the country and, for transcontinental countries, the
+ *      location (scripts/continent.ts).
+ *   5. Reports, without changing, IATA codes that differ between the dataset and
  *      OurAirports so a human can review them.
  *
  * Usage:
@@ -23,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parse } from 'csv-parse/sync';
 import type { Airport } from '../src/index';
+import { continentFor, dominantContinents } from './continent';
 
 const OURAIRPORTS_URL = 'https://davidmegginson.github.io/ourairports-data/airports.csv';
 const RUNWAYS_URL = 'https://davidmegginson.github.io/ourairports-data/runways.csv';
@@ -228,6 +231,7 @@ async function main(): Promise<void> {
         iataFilled: [] as string[],
         added: [] as string[],
         iataConflicts: [] as string[],
+        continentChanged: [] as string[],
         cityFilled: 0,
         cityCodeFilled: 0,
     };
@@ -277,6 +281,16 @@ async function main(): Promise<void> {
         airport.city_code = code;
     }
 
+    // 4: continent from country and geography (see scripts/continent.ts); records added in 3 use the same rule
+    const dominant = dominantContinents(oaRows);
+    for (const airport of data) {
+        const continent = continentFor(airport.country_code, airport.latitude, airport.longitude, dominant);
+        if (continent && continent !== airport.continent) {
+            log.continentChanged.push(`${airport.iata || airport.icao} (${airport.airport}, ${airport.country_code}): ${airport.continent} → ${continent}`);
+            airport.continent = continent;
+        }
+    }
+
     // 3: add airports missing from the dataset
     for (const [iata, row] of oaByIata) {
         if (usedIata.has(iata) || !/^[A-Z]{3}$/.test(iata)) continue;
@@ -300,7 +314,7 @@ async function main(): Promise<void> {
             time,
             utc: utcOffsetHours(time, UTC_SNAPSHOT_DATE),
             country_code: row.iso_country,
-            continent: row.continent,
+            continent: continentFor(row.iso_country, lat, lon, dominant) ?? row.continent,
             airport: cleanName(row.name),
             latitude: lat,
             longitude: lon,
@@ -331,6 +345,7 @@ async function main(): Promise<void> {
     lines.push(`- city changed: ${log.cityFilled}, city_code changed: ${log.cityCodeFilled}`);
     lines.push('', `### Added (${log.added.length})`, ...log.added.map(s => `- ${s}`));
     lines.push('', `### IATA set on existing records (${log.iataFilled.length})`, ...log.iataFilled.map(s => `- ${s}`));
+    lines.push('', `### Continent changed (${log.continentChanged.length})`, ...log.continentChanged.map(s => `- ${s}`));
     lines.push('', `### IATA mismatches to review (${log.iataConflicts.length})`, ...log.iataConflicts.map(s => `- ${s}`));
     const report = lines.join('\n');
     console.log(report);

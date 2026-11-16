@@ -1010,8 +1010,8 @@ export async function findNearbyAirports(lat: number, lon: number, radiusKm: num
 
     const minLat = lat - latDelta;
     const maxLat = lat + latDelta;
-    const minLon = lon - lonDelta;
-    const maxLon = lon + lonDelta;
+    // Near the poles the box covers every longitude; skip the longitude pre-filter.
+    const checkLon = lonDelta < 180;
 
     const results: Airport[] = [];
 
@@ -1019,7 +1019,8 @@ export async function findNearbyAirports(lat: number, lon: number, radiusKm: num
         const g = geo[i];
 
         if (g.lat < minLat || g.lat > maxLat) continue;
-        if (g.lon < minLon || g.lon > maxLon) continue;
+        // Compare the wrapped longitude difference so the box spans the ±180° antimeridian.
+        if (checkLon && Math.abs(((g.lon - lon + 540) % 360) - 180) > lonDelta) continue;
 
         const distance = haversineDistance(lat, lon, g.lat, g.lon);
         if (distance <= radiusKm) {

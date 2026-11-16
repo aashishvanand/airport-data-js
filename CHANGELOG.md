@@ -28,7 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixes
 
-- **OGG** (Kahului) — continent `NA` → `OC`, matching the other Hawaiian airports ([#195](https://github.com/aashishvanand/airport-data-js/issues/195)).
+- **`findNearbyAirports`** now finds airports across the ±180° antimeridian. The longitude pre-filter compared raw values, so a search at -179.99° skipped airports at +179.87° (e.g. Taveuni, Fiji) ([#207](https://github.com/aashishvanand/airport-data-js/issues/207)).
+- **Continents** — 238 records corrected. Each country now has one continent, except countries split by geography: Hawaii is `OC` ([#195](https://github.com/aashishvanand/airport-data-js/issues/195): OGG, BSF, HDH, HIK, WKL, Tern Island); Russia is split at the Urals (60°E; 122 records); Turkey at the Bosphorus (IST is `EU`, SAW is `AS`); Egypt's Sinai is `AS` (SSH, ELT, SKV, ...); Spain's Canary Islands, Ceuta and Melilla are `AF`; Colombia's San Andrés and Providencia are `NA`. Also fixed stray values such as UK railway stations in `NA`, German airports in `SA`/`OC` and US airports in `AS`/`AF`/`SA`/`EU`.
+- **QSI, QDY, QSX** (US) — continent, Wikipedia link and elevation had been copied from other airports that share the IATA code (Moshi, Tanzania; New Amsterdam, Guyana; ...). QSI elevation 4,971 → 236 ft, QDY 7,359 → 2,417 ft (renamed "Ryan Field"), QSX 4,128 → 583 ft.
+- **ICAO codes from other airports removed**: BYL (`KBYL`, Liberia), LNQ (`KLNQ`, Papua New Guinea), SCA (`KSCA`, Colombia), LIJ (`ZSLI` is Lishui, China) and Lipetsk Air Base (`UUWL` is Luzhki Heliport). Their RadarBox/FlightAware URLs, which used the wrong code, are cleared.
+- **Coordinates**: MPT (Maliana, Timor-Leste) moved ~100 km from the sea to the airport; LNQ (Loani) corrected per OurAirports.
+- **BIBA, BIBR, BISF** — Icelandic airports filed under Greenland; country `GL` → `IS`.
+- **1Q9 (Mili) and 03N (Utirik)** — Marshall Islands strips filed under `US` with the wrong longitude sign; now `MH`, `Pacific/Majuro`.
 - **KKM** (Khok Kathiam) — time zone `"Asia/ Bangkok"` → `"Asia/Bangkok"`.
 - **CKQ7** (Vermilion Bay, Ontario) — time zone `"Vermillion Bay"` → `"America/Winnipeg"`; name corrected to "Vermilion Bay Airport".
 - **KTKI** (McKinney National) — IATA `QQT` → `DTX` (`QQT` belongs to Qeqertaq Heliport); longitude corrected from -95.59 to -96.59 and elevation from 16,233 ft to 585 ft.
@@ -44,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔧 Tooling
 
-- `scripts/refresh_ourairports.ts` (`npm run refresh:data`) syncs with the latest OurAirports export: adds scheduled-service airports (or any codes passed with `--add`), sets newly assigned IATA codes, fills `city`/`city_code`, and lists IATA mismatches for review. Source records only count as a match within 50 km, so a reused code can't attach another airport's data.
+- `scripts/refresh_ourairports.ts` (`npm run refresh:data`) syncs with the latest OurAirports export: adds scheduled-service airports (or any codes passed with `--add`), sets newly assigned IATA codes, fills `city`/`city_code`, and lists IATA mismatches for review. Source records only count as a match within 50 km, so a reused code can't attach another airport's data. It also sets `continent` from the country and location (`scripts/continent.ts`) rather than copying OurAirports' per-airport value, which is inconsistent (e.g. Vladivostok-area airports tagged `EU`).
 - New weekly GitHub Action (`data-refresh.yml`) runs the refresh, validates, builds, tests and opens a PR.
 - `npm run check:duplicates` now also fails on invalid IANA time zones, malformed `city`/`city_code`, and non-string `iata`/`icao`.
 - The npm package now ships only `dist/airport-data.min.js` and `dist/airport-data.lite.min.js` from `dist/`, so stray local build output can't be published.
