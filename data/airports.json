@@ -14472,7 +14472,7 @@
     "flightradar24_url": "https://www.flightradar24.com/airport/BEB",
     "radarbox_url": "https://www.radarbox.com/airport/EGPL",
     "flightaware_url": "https://www.flightaware.com/live/airport/EGPL",
-    "city": "Balivanich",
+    "city": "Balivanich, Eilean Siar",
     "city_code": "BEB"
   },
   {
@@ -21732,7 +21732,7 @@
     "flightradar24_url": "https://www.flightradar24.com/airport/BRR",
     "radarbox_url": "https://www.radarbox.com/airport/EGPR",
     "flightaware_url": "https://www.flightaware.com/live/airport/EGPR",
-    "city": "Eoligarry",
+    "city": "Eoligarry, Eilean Siar",
     "city_code": "BRR"
   },
   {
@@ -332834,7 +332834,7 @@
     "flightradar24_url": "",
     "radarbox_url": "https://www.radarbox.com/airport/SNCE",
     "flightaware_url": "https://www.flightaware.com/live/airport/SNCE",
-    "city": "Campo Do Meio",
+    "city": "Campo do Meio",
     "city_code": ""
   },
   {
