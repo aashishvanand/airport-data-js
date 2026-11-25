@@ -655,7 +655,9 @@ Scripts are plain TypeScript run directly via [`tsx`](https://github.com/private
 
 ### Updating Airport Data
 
-A [weekly workflow](.github/workflows/data-refresh.yml) runs `refresh:data` against OurAirports every Monday and opens a PR when something changed: new scheduled-service airports, newly assigned IATA codes on existing records, and city names. IATA codes that differ between the dataset and OurAirports are listed in the PR for review but never changed automatically. You can also run it manually from the Actions tab and pass extra codes to add.
+A [weekly workflow](.github/workflows/data-refresh.yml) compares the dataset with OurAirports every Monday without changing it, and opens an issue (label `data-refresh`) when there is something to review: new scheduled-service airports (with links to their OurAirports pages), newly assigned IATA codes on existing records, continent changes, city updates, and IATA codes that differ between the two. Airports are never added automatically. After checking them, run the workflow from the Actions tab with `mode: apply` and the checked IATA codes in `add` (e.g. `FSH,BZJ`); it opens a PR with those airports plus the routine updates. IATA mismatches are never changed automatically.
+
+Locally, `npm run refresh:data -- --no-auto-add` lists new airports as candidates instead of adding them, and `--add FSH,BZJ --write` adds only the listed ones.
 
 To add or update airport entries by hand:
 
