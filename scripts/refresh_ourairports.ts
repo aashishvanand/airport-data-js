@@ -36,6 +36,7 @@ const SEATSAERO_JSON = path.join(ROOT, 'data_source/seatsaero_new.json');
 
 /** IATA metro assignments that the city-code source is missing (keyed by airport IATA). */
 const CITY_CODE_OVERRIDES: Record<string, string> = {
+    ALY: 'ALY', // Borg El Arab took over ALY in 2025-2026; the source still lists it as HBE
     EWR: 'NYC',
     JPN: 'WAS', // Pentagon; the source lists OCW (Washington, NC)
     LNQ: 'LNQ', // coordinates corrected; the source still has the old position
@@ -300,8 +301,13 @@ async function main(): Promise<void> {
         };
         const oa = near(airport.icao ? oaByCode.get(String(airport.icao)) : undefined) || near(airport.iata ? oaByIata.get(airport.iata) : undefined);
 
-        // Keep the existing city when OurAirports has no replacement.
-        const city = CITY_OVERRIDES[String(airport.icao)] ?? (oa?.municipality?.trim() || airport.city || '');
+        // Keep the existing city when OurAirports has no replacement, or when its value is
+        // the same city with a region appended ("Balivanich" -> "Balivanich, Eilean Siar"),
+        // which would break exact city lookups.
+        const remoteCity = oa?.municipality?.trim() || '';
+        const existingCity = airport.city || '';
+        const keepExisting = !remoteCity || (existingCity !== '' && remoteCity.toLowerCase().startsWith(`${existingCity.toLowerCase()},`));
+        const city = CITY_OVERRIDES[String(airport.icao)] ?? (keepExisting ? existingCity : remoteCity);
         if (city !== (airport.city ?? '')) log.cityFilled++;
         airport.city = city;
 
