@@ -1,5 +1,5 @@
 import { ungzip } from 'pako';
-import { getPayload } from './state';
+import { clearPayload, getPayload } from './state';
 
 // ============================================================================
 // Types & Interfaces
@@ -18,8 +18,10 @@ import { getPayload } from './state';
 export interface Airport {
     /** 3-letter IATA airport code (e.g., "SIN", "LHR", "JFK") */
     iata: string;
-    /** 4-letter ICAO airport code (e.g., "WSSS", "EGLL", "KJFK") */
+    /** 4-letter ICAO airport code (e.g., "WSSS", "EGLL", "KJFK"). Empty when unknown. */
     icao: string;
+    /** FAA location identifier for US airports whose FAA code is not a 4-character ICAO code (e.g., "80F"). */
+    faa_code?: string;
     /** IANA timezone identifier (e.g., "Asia/Singapore") */
     time: string;
     /**
@@ -96,6 +98,8 @@ export interface AirportWithDistance extends Airport {
 export interface AirportFilters {
     iata?: string;
     icao?: string;
+    /** FAA location identifier (US airports without a 4-character ICAO code). */
+    faa_code?: string;
     time?: string;
     utc?: number;
     country_code?: string;
@@ -287,7 +291,10 @@ let timezoneIndex: Map<string, Airport[]> | null = null;
 let typeIndex: Map<string, Airport[]> | null = null;
 let cityIndex: Map<string, Airport[]> | null = null;
 let cityCodeIndex: Map<string, Airport[]> | null = null;
+let airportIndex: Map<Airport, number> | null = null;
+let importanceScores: number[] | null = null;
 let searchKeys: SearchKey[] | null = null;
+const continentSortCache = new Map<string, Airport[]>();
 
 interface SearchKey {
     name: string;
@@ -304,6 +311,7 @@ interface GeoEntry {
 }
 
 let geoData: GeoEntry[] | null = null;
+let geoByLatitude: GeoEntry[] | null = null;
 
 const DEG_TO_RAD: number = Math.PI / 180;
 const EARTH_RADIUS_KM: number = 6371;
@@ -341,12 +349,34 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
  * @private
  */
 function base64ToBytes(base64: string): Uint8Array {
+    // Node, Bun and Deno decode base64 natively and much faster than atob.
+    const BufferCtor = (globalThis as { Buffer?: { from(input: string, encoding: string): Uint8Array } }).Buffer;
+    if (BufferCtor) return BufferCtor.from(base64, 'base64');
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
         bytes[i] = binary.charCodeAt(i);
     }
     return bytes;
+}
+
+/**
+ * Decompresses a gzip payload to text. Node's built-in zlib is used when available
+ * (much faster than pako); the browser bundle falls back to pako.
+ * @private
+ */
+function gunzipToText(bytes: Uint8Array): string {
+    const getBuiltinModule = (globalThis as {
+        process?: { getBuiltinModule?: (id: string) => { gunzipSync(input: Uint8Array): Uint8Array } };
+    }).process?.getBuiltinModule;
+    if (typeof getBuiltinModule === 'function') {
+        try {
+            return new TextDecoder().decode(getBuiltinModule('zlib').gunzipSync(bytes));
+        } catch {
+            // Edge runtimes can expose `process` without zlib; fall through to pako.
+        }
+    }
+    return ungzip(bytes, { toText: true } as const);
 }
 
 /**
@@ -376,8 +406,10 @@ function fromColumns(parsed: Airport[] | Record<string, unknown[]>): Airport[] {
 function getData(): Airport[] {
     if (!airportsData) {
         const bytes = base64ToBytes(getPayload().gzip);
-        const json = ungzip(bytes, { toText: true } as const);
+        const json = gunzipToText(bytes);
         airportsData = fromColumns(JSON.parse(json));
+        // The 1.2 MB base64 string is no longer needed once the rows exist.
+        clearPayload();
     }
     return airportsData;
 }
@@ -402,22 +434,39 @@ function getGeoData(): GeoEntry[] {
 }
 
 /**
+ * Geographic entries sorted by latitude, so nearby searches can binary-search the
+ * latitude band instead of scanning all airports.
+ * @private
+ */
+function getGeoByLatitude(): GeoEntry[] {
+    if (!geoByLatitude) {
+        geoByLatitude = [...getGeoData()].sort((a, b) => a.lat - b.lat);
+    }
+    return geoByLatitude;
+}
+
+/**
+ * Builds an index of airports keyed by a field value.
+ * @private
+ */
+function buildIndex(keyFn: (airport: Airport) => string | null | undefined): Map<string, Airport[]> {
+    const index = new Map<string, Airport[]>();
+    for (const airport of getData()) {
+        const key = keyFn(airport);
+        if (!key) continue;
+        const list = index.get(key);
+        if (list) list.push(airport);
+        else index.set(key, [airport]);
+    }
+    return index;
+}
+
+/**
  * Builds and returns an index of airports by IATA code.
  * @private
  */
 function getIataIndex(): Map<string, Airport[]> {
-    if (!iataIndex) {
-        const data = getData();
-        iataIndex = new Map();
-        data.forEach(airport => {
-            if (airport.iata) {
-                if (!iataIndex!.has(airport.iata)) {
-                    iataIndex!.set(airport.iata, []);
-                }
-                iataIndex!.get(airport.iata)!.push(airport);
-            }
-        });
-    }
+    if (!iataIndex) iataIndex = buildIndex(airport => airport.iata);
     return iataIndex;
 }
 
@@ -426,18 +475,7 @@ function getIataIndex(): Map<string, Airport[]> {
  * @private
  */
 function getIcaoIndex(): Map<string, Airport[]> {
-    if (!icaoIndex) {
-        const data = getData();
-        icaoIndex = new Map();
-        data.forEach(airport => {
-            if (airport.icao) {
-                if (!icaoIndex!.has(airport.icao)) {
-                    icaoIndex!.set(airport.icao, []);
-                }
-                icaoIndex!.get(airport.icao)!.push(airport);
-            }
-        });
-    }
+    if (!icaoIndex) icaoIndex = buildIndex(airport => airport.icao);
     return icaoIndex;
 }
 
@@ -446,18 +484,7 @@ function getIcaoIndex(): Map<string, Airport[]> {
  * @private
  */
 function getCountryIndex(): Map<string, Airport[]> {
-    if (!countryIndex) {
-        const data = getData();
-        countryIndex = new Map();
-        data.forEach(airport => {
-            if (airport.country_code) {
-                if (!countryIndex!.has(airport.country_code)) {
-                    countryIndex!.set(airport.country_code, []);
-                }
-                countryIndex!.get(airport.country_code)!.push(airport);
-            }
-        });
-    }
+    if (!countryIndex) countryIndex = buildIndex(airport => airport.country_code);
     return countryIndex;
 }
 
@@ -466,18 +493,7 @@ function getCountryIndex(): Map<string, Airport[]> {
  * @private
  */
 function getContinentIndex(): Map<string, Airport[]> {
-    if (!continentIndex) {
-        const data = getData();
-        continentIndex = new Map();
-        data.forEach(airport => {
-            if (airport.continent) {
-                if (!continentIndex!.has(airport.continent)) {
-                    continentIndex!.set(airport.continent, []);
-                }
-                continentIndex!.get(airport.continent)!.push(airport);
-            }
-        });
-    }
+    if (!continentIndex) continentIndex = buildIndex(airport => airport.continent);
     return continentIndex;
 }
 
@@ -486,18 +502,7 @@ function getContinentIndex(): Map<string, Airport[]> {
  * @private
  */
 function getTimezoneIndex(): Map<string, Airport[]> {
-    if (!timezoneIndex) {
-        const data = getData();
-        timezoneIndex = new Map();
-        data.forEach(airport => {
-            if (airport.time) {
-                if (!timezoneIndex!.has(airport.time)) {
-                    timezoneIndex!.set(airport.time, []);
-                }
-                timezoneIndex!.get(airport.time)!.push(airport);
-            }
-        });
-    }
+    if (!timezoneIndex) timezoneIndex = buildIndex(airport => airport.time);
     return timezoneIndex;
 }
 
@@ -506,31 +511,30 @@ function getTimezoneIndex(): Map<string, Airport[]> {
  * @private
  */
 function getTypeIndex(): Map<string, Airport[]> {
-    if (!typeIndex) {
-        const data = getData();
-        typeIndex = new Map();
-        data.forEach(airport => {
-            if (airport.type) {
-                const lowerType = airport.type.toLowerCase();
-                if (!typeIndex!.has(lowerType)) {
-                    typeIndex!.set(lowerType, []);
-                }
-                typeIndex!.get(lowerType)!.push(airport);
-            }
-        });
-    }
+    if (!typeIndex) typeIndex = buildIndex(airport => airport.type ? airport.type.toLowerCase() : '');
     return typeIndex;
 }
 
 /**
- * Lowercases, strips diacritics (Zürich -> zurich), and collapses punctuation/whitespace.
+ * Latin letters that NFD does not decompose, folded to ASCII before normalization.
+ * @private
+ */
+const TRANSLITERATIONS: Record<string, string> = {
+    'ø': 'o', 'ł': 'l', 'ß': 'ss', 'đ': 'd', 'æ': 'ae',
+    'œ': 'oe', 'ð': 'd', 'þ': 'th', 'ı': 'i',
+};
+
+/**
+ * Lowercases, strips diacritics (Zürich -> zurich), folds letters NFD cannot
+ * decompose (Tromsø -> tromso), and collapses punctuation/whitespace.
  * @private
  */
 function normalizeText(value: string): string {
     return value
+        .toLowerCase()
+        .replace(/[øłßđæœðþı]/g, character => TRANSLITERATIONS[character])
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
-        .toLowerCase()
         .replace(/[^a-z0-9]+/g, ' ')
         .trim();
 }
@@ -622,6 +626,27 @@ function importanceScore(airport: Airport): number {
 }
 
 /**
+ * Returns the dataset index for each airport object (built once).
+ * @private
+ */
+function getAirportIndex(): Map<Airport, number> {
+    if (!airportIndex) {
+        airportIndex = new Map();
+        getData().forEach((airport, i) => airportIndex!.set(airport, i));
+    }
+    return airportIndex;
+}
+
+/**
+ * Returns importance scores aligned with getData() (built once).
+ * @private
+ */
+function getImportanceScores(): number[] {
+    if (!importanceScores) importanceScores = getData().map(importanceScore);
+    return importanceScores;
+}
+
+/**
  * Sorts airports by importance (descending), keeping dataset order for ties.
  * @private
  */
@@ -695,11 +720,21 @@ function validateRegex(data: string, regex: RegExp, errorMessage: string): void 
 }
 
 /**
+ * Trims and uppercases an airport/country/continent code, since the dataset stores
+ * codes in uppercase. Accepts lowercase and padded input from callers and LLMs.
+ * @private
+ */
+function normalizeCode(code: string): string {
+    return typeof code === 'string' ? code.trim().toUpperCase() : code;
+}
+
+/**
  * A helper function to get an airport by either IATA or ICAO code.
  * @private
  */
 async function _getAirportByCode(code: string): Promise<Airport | null> {
     if (typeof code !== 'string') return null;
+    code = normalizeCode(code);
 
     if (/^[A-Z]{3}$/.test(code)) {
         const index = getIataIndex();
@@ -723,6 +758,7 @@ async function _getAirportByCode(code: string): Promise<Airport | null> {
  */
 function _getAirportByCodeDirect(code: string): Airport | null {
     if (typeof code !== 'string') return null;
+    code = normalizeCode(code);
 
     if (/^[A-Z]{3}$/.test(code)) {
         const index = getIataIndex();
@@ -744,29 +780,82 @@ function _getAirportByCodeDirect(code: string): Airport | null {
  * @private
  */
 const ALLOWED_FILTER_KEYS = new Set<string>([
-    'iata', 'icao', 'time', 'utc', 'country_code', 'continent',
+    'iata', 'icao', 'faa_code', 'time', 'utc', 'country_code', 'continent',
     'airport', 'city', 'city_code', 'latitude', 'longitude', 'elevation_ft',
     'type', 'scheduled_service', 'wikipedia', 'website',
     'runway_length', 'flightradar24_url', 'radarbox_url', 'flightaware_url',
     'has_scheduled_service', 'min_runway_ft'
 ]);
 
+const NUMBER_FILTER_KEYS = new Set(['utc', 'latitude', 'longitude', 'min_runway_ft']);
+const NULLABLE_NUMBER_FILTER_KEYS = new Set(['elevation_ft', 'runway_length']);
+/** Filters stored uppercase in the dataset. */
+const UPPERCASE_FILTER_KEYS = new Set(['country_code', 'continent', 'iata', 'icao', 'city_code', 'faa_code']);
+
+/**
+ * Validates a filter value and normalizes its case, throwing a clear error for bad types.
+ * @private
+ */
+function normalizeFilterValue(key: string, value: unknown): unknown {
+    if (key === 'scheduled_service') {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+            const normalized = value.toLowerCase();
+            if (normalized === 'true' || normalized === 'yes') return true;
+            if (normalized === 'false' || normalized === 'no') return false;
+        }
+        throw new Error("Invalid value for filter 'scheduled_service'. Expected a boolean or \"TRUE\"/\"FALSE\".");
+    }
+    if (key === 'has_scheduled_service') {
+        if (typeof value !== 'boolean') {
+            throw new Error("Invalid value for filter 'has_scheduled_service'. Expected a boolean.");
+        }
+        return value;
+    }
+    if (NUMBER_FILTER_KEYS.has(key)) {
+        if (typeof value !== 'number' || !isFinite(value)) {
+            throw new Error(`Invalid value for filter '${key}'. Expected a finite number.`);
+        }
+        return value;
+    }
+    if (NULLABLE_NUMBER_FILTER_KEYS.has(key)) {
+        if (value === null) return null;
+        if (typeof value !== 'number' || !isFinite(value)) {
+            throw new Error(`Invalid value for filter '${key}'. Expected a finite number or null.`);
+        }
+        return value;
+    }
+    if (typeof value !== 'string') {
+        throw new Error(`Invalid value for filter '${key}'. Expected a string.`);
+    }
+    if (UPPERCASE_FILTER_KEYS.has(key)) return value.toUpperCase();
+    if (key === 'type') return value.toLowerCase();
+    return value;
+}
+
 /**
  * Internal implementation of findAirports that returns references (no copies).
  * @private
  */
 function _findAirportsInternal(filters: AirportFilters = {}): Airport[] {
-    const filterKeys = Object.keys(filters);
-    for (const key of filterKeys) {
+    if (filters === null || typeof filters !== 'object' || Array.isArray(filters)) {
+        throw new Error("Invalid filters. Provide an object of filter criteria.");
+    }
+
+    const activeFilters: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(filters)) {
+        if (value === undefined) continue;
         if (!ALLOWED_FILTER_KEYS.has(key)) {
             throw new Error(`Unrecognized filter key: '${key}'. Allowed keys: ${[...ALLOWED_FILTER_KEYS].join(', ')}`);
         }
+        activeFilters[key] = normalizeFilterValue(key, value);
     }
+    const filterKeys = Object.keys(activeFilters);
 
     let candidateSet: Airport[] | null = null;
 
     for (const key of filterKeys) {
-        const filterValue = (filters as Record<string, unknown>)[key];
+        const filterValue = activeFilters[key];
         let indexed: Airport[] | null = null;
 
         switch (key) {
@@ -776,11 +865,9 @@ function _findAirportsInternal(filters: AirportFilters = {}): Airport[] {
             case 'continent':
                 indexed = getContinentIndex().get(filterValue as string) || [];
                 break;
-            case 'type': {
-                const lowerType = (typeof filterValue === 'string') ? filterValue.toLowerCase() : '';
-                indexed = getTypeIndex().get(lowerType) || [];
+            case 'type':
+                indexed = getTypeIndex().get(filterValue as string) || [];
                 break;
-            }
             case 'time':
                 indexed = getTimezoneIndex().get(filterValue as string) || [];
                 break;
@@ -806,7 +893,7 @@ function _findAirportsInternal(filters: AirportFilters = {}): Airport[] {
 
     const results = airports.filter(airport => {
         for (const key of filterKeys) {
-            const filterValue = (filters as Record<string, unknown>)[key];
+            const filterValue = activeFilters[key];
             switch (key) {
                 case 'country_code':
                 case 'continent':
@@ -822,9 +909,9 @@ function _findAirportsInternal(filters: AirportFilters = {}): Airport[] {
                     if (!Object.prototype.hasOwnProperty.call(airport, key) || (airport as unknown as Record<string, unknown>)[key] !== filterValue) return false;
                     break;
 
+                case 'scheduled_service':
                 case 'has_scheduled_service': {
-                    const expectedValue = filterValue as boolean;
-                    if (hasScheduledService(airport) !== expectedValue) return false;
+                    if (hasScheduledService(airport) !== (filterValue as boolean)) return false;
                     break;
                 }
 
@@ -863,11 +950,12 @@ function _findAirportsInternal(filters: AirportFilters = {}): Airport[] {
  * ```
  */
 export async function getAirportByIata(iataCode: string = ''): Promise<Airport[]> {
-    validateRegex(iataCode, /^[A-Z]{3}$/, "Invalid IATA format. Please provide a 3-letter uppercase code, e.g., 'AAA'.");
+    const code = normalizeCode(iataCode);
+    validateRegex(code, /^[A-Z]{3}$/, "Invalid IATA format. Please provide a 3-letter code, e.g., 'AAA'.");
     const index = getIataIndex();
-    const results = index.get(iataCode) || [];
+    const results = index.get(code) || [];
     if (results.length === 0) {
-        throw new Error(`No data found for IATA code: ${iataCode}`);
+        throw new Error(`No data found for IATA code: ${code}`);
     }
     return copyAirports(results);
 }
@@ -886,11 +974,12 @@ export async function getAirportByIata(iataCode: string = ''): Promise<Airport[]
  * ```
  */
 export async function getAirportByIcao(icaoCode: string = ''): Promise<Airport[]> {
-    validateRegex(icaoCode, /^[A-Z0-9]{4}$/, "Invalid ICAO format. Please provide a 4-character uppercase code, e.g., 'NTGA'.");
+    const code = normalizeCode(icaoCode);
+    validateRegex(code, /^[A-Z0-9]{4}$/, "Invalid ICAO format. Please provide a 4-character code, e.g., 'NTGA'.");
     const index = getIcaoIndex();
-    const results = index.get(icaoCode) || [];
+    const results = index.get(code) || [];
     if (results.length === 0) {
-        throw new Error(`No data found for ICAO code: ${icaoCode}`);
+        throw new Error(`No data found for ICAO code: ${code}`);
     }
     return copyAirports(results);
 }
@@ -910,11 +999,12 @@ export async function getAirportByIcao(icaoCode: string = ''): Promise<Airport[]
  * ```
  */
 export async function getAirportByCountryCode(countryCode: string = ''): Promise<Airport[]> {
-    validateRegex(countryCode, /^[A-Z]{2}$/, "Invalid Country Code format. Please provide a 2-letter uppercase code, e.g., 'US'.");
+    const code = normalizeCode(countryCode);
+    validateRegex(code, /^[A-Z]{2}$/, "Invalid Country Code format. Please provide a 2-letter code, e.g., 'US'.");
     const index = getCountryIndex();
-    const results = index.get(countryCode) || [];
+    const results = index.get(code) || [];
     if (results.length === 0) {
-        throw new Error(`No data found for Country Code: ${countryCode}`);
+        throw new Error(`No data found for Country Code: ${code}`);
     }
     return copyAirports(results);
 }
@@ -937,9 +1027,10 @@ export async function getAirportByCountryCode(countryCode: string = ''): Promise
  * ```
  */
 export async function getAirportByContinent(continentCode: string = ''): Promise<Airport[]> {
-    validateRegex(continentCode, /^[A-Z]{2}$/, "Invalid Continent Code format. Please provide a 2-letter uppercase code, e.g., 'AS'.");
+    const code = normalizeCode(continentCode);
+    validateRegex(code, /^[A-Z]{2}$/, "Invalid Continent Code format. Please provide a 2-letter code, e.g., 'AS'.");
     const index = getContinentIndex();
-    const results = index.get(continentCode) || [];
+    const results = index.get(code) || [];
     if (results.length === 0) {
         throw new Error(`No data found for Continent Code: ${continentCode}`);
     }
@@ -961,14 +1052,16 @@ export async function getAirportByContinent(continentCode: string = ''): Promise
  * ```
  */
 export async function searchByName(query: string = ''): Promise<Airport[]> {
-    if (typeof query !== 'string' || query.length < 2) {
-        throw new Error("Search query must be at least 2 characters long.");
+    if (typeof query !== 'string') {
+        throw new Error("Search query must be a string.");
     }
     if (query.length > 100) {
         throw new Error("Search query must not exceed 100 characters.");
     }
     const normalizedQuery = normalizeText(query);
-    if (!normalizedQuery) return [];
+    if (normalizedQuery.length < 2) {
+        throw new Error("Search query must contain at least 2 letters or digits.");
+    }
     const keys = getSearchKeys();
     const results = getData().filter((_, i) => keys[i].name.includes(normalizedQuery));
     return copyAirports(results);
@@ -981,16 +1074,17 @@ export async function searchByName(query: string = ''): Promise<Airport[]> {
  * @param lat - Latitude of the center point (-90 to 90).
  * @param lon - Longitude of the center point (-180 to 180).
  * @param radiusKm - The search radius in kilometers (default: 100).
- * @returns Array of airports within the radius.
+ * @param limit - Optional maximum number of results to return (nearest first).
+ * @returns Airports within the radius, nearest first, each with its `distance` in kilometers.
  *
  * @example
  * ```typescript
  * // Find airports within 50km of central London
  * const airports = await findNearbyAirports(51.5074, -0.1278, 50);
- * console.log(airports.some(a => a.iata === 'LHR')); // true
+ * console.log(airports[0].iata, airports[0].distance); // "LHR" 23.3
  * ```
  */
-export async function findNearbyAirports(lat: number, lon: number, radiusKm: number = 100): Promise<Airport[]> {
+export async function findNearbyAirports(lat: number, lon: number, radiusKm: number = 100, limit?: number): Promise<AirportWithDistance[]> {
     if (typeof lat !== 'number' || !isFinite(lat) || lat < -90 || lat > 90) {
         throw new Error("Invalid latitude. Must be a finite number between -90 and 90.");
     }
@@ -1000,9 +1094,13 @@ export async function findNearbyAirports(lat: number, lon: number, radiusKm: num
     if (typeof radiusKm !== 'number' || !isFinite(radiusKm) || radiusKm <= 0) {
         throw new Error("Invalid radius. Must be a positive finite number in kilometers.");
     }
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+        throw new Error("Invalid limit. Must be a positive integer.");
+    }
 
     const data = getData();
-    const geo = getGeoData();
+    // Entries are sorted by latitude so we only visit the band inside the search box.
+    const geo = getGeoByLatitude();
 
     const latDelta = radiusKm / 111;
     const cosLat = Math.cos(toRad(lat));
@@ -1015,22 +1113,30 @@ export async function findNearbyAirports(lat: number, lon: number, radiusKm: num
     const minLat = lat - latDelta;
     const maxLat = lat + latDelta;
 
-    const results: Airport[] = [];
+    // Binary-search the first entry at or above minLat.
+    let low = 0;
+    let high = geo.length;
+    while (low < high) {
+        const mid = (low + high) >>> 1;
+        if (geo[mid].lat < minLat) low = mid + 1;
+        else high = mid;
+    }
 
-    for (let i = 0; i < geo.length; i++) {
+    const results: AirportWithDistance[] = [];
+
+    for (let i = low; i < geo.length; i++) {
         const g = geo[i];
-
-        if (g.lat < minLat || g.lat > maxLat) continue;
+        if (g.lat > maxLat) break;
         // Compare the wrapped longitude difference so the box spans the ±180° antimeridian.
         if (checkLon && Math.abs(((g.lon - lon + 540) % 360) - 180) > lonDelta) continue;
 
         const distance = haversineDistance(lat, lon, g.lat, g.lon);
         if (distance <= radiusKm) {
-            results.push(data[g.index]);
+            results.push({ ...data[g.index], distance });
         }
     }
 
-    return copyAirports(results);
+    return results.sort((a, b) => a.distance - b.distance).slice(0, limit ?? Infinity);
 }
 
 /**
@@ -1050,16 +1156,20 @@ export async function findNearbyAirports(lat: number, lon: number, radiusKm: num
  * console.log(largeAirports.length); // 300+
  * ```
  */
-export async function getAirportsByType(type: string = ''): Promise<Airport[]> {
+export async function getAirportsByType(type: string = '', limit?: number): Promise<Airport[]> {
     if (typeof type !== 'string' || type.length === 0) {
         throw new Error("Invalid type provided.");
     }
+    if (limit !== undefined && (!Number.isInteger(limit) || limit < 1)) {
+        throw new Error("Invalid limit. Must be a positive integer.");
+    }
     const lowerCaseType = type.toLowerCase();
     const index = getTypeIndex();
+    const cap = limit !== undefined ? limit : Infinity;
 
     const exactResults = index.get(lowerCaseType);
     if (exactResults) {
-        return copyAirports(exactResults);
+        return copyAirports(exactResults.slice(0, cap));
     }
 
     if (lowerCaseType === 'airport') {
@@ -1067,9 +1177,10 @@ export async function getAirportsByType(type: string = ''): Promise<Airport[]> {
         for (const [key, airports] of index) {
             if (key.includes('airport')) {
                 results.push(...airports);
+                if (results.length >= cap) break;
             }
         }
-        return copyAirports(results);
+        return copyAirports(results.slice(0, cap));
     }
 
     return [];
@@ -1177,6 +1288,7 @@ function _search(query: string, options: SearchOptions = {}): Array<{ airport: A
 
     const data = getData();
     const keys = getSearchKeys();
+    const scores = getImportanceScores();
     const scored: Array<{ airport: Airport; score: number; matchType: SearchMatchType; i: number }> = [];
     const passes = (airport: Airport): boolean =>
         !(options.scheduledOnly && !hasScheduledService(airport)) &&
@@ -1229,18 +1341,19 @@ function _search(query: string, options: SearchOptions = {}): Array<{ airport: A
         }
 
         if (score < 0) continue;
-        scored.push({ airport, score: score + importanceScore(airport), matchType, i });
+        scored.push({ airport, score: score + scores[i], matchType, i });
     }
 
     // Metro expansion: an exact city match ("new york") also pulls in the other airports of
     // that city's IATA metro code (EWR is listed under "Newark" but belongs to NYC).
     if (matchedCityCodes.size > 0) {
         const byAirport = new Map(scored.map(entry => [entry.airport, entry]));
-        let indexOf: Map<Airport, number> | null = null;
+        const dataIndex = getAirportIndex();
         for (const code of matchedCityCodes) {
             for (const airport of getCityCodeIndex().get(code) || []) {
                 if (!passes(airport)) continue;
-                const score = MATCH_SCORES.city + importanceScore(airport);
+                const index = dataIndex.get(airport)!;
+                const score = MATCH_SCORES.city + scores[index];
                 const existing = byAirport.get(airport);
                 if (existing) {
                     if (existing.score < score) {
@@ -1249,11 +1362,7 @@ function _search(query: string, options: SearchOptions = {}): Array<{ airport: A
                     }
                     continue;
                 }
-                if (!indexOf) {
-                    indexOf = new Map();
-                    data.forEach((a, i) => indexOf!.set(a, i));
-                }
-                const entry = { airport, score, matchType: 'city_code' as SearchMatchType, i: indexOf.get(airport)! };
+                const entry = { airport, score, matchType: 'city_code' as SearchMatchType, i: index };
                 scored.push(entry);
                 byAirport.set(airport, entry);
             }
@@ -1289,17 +1398,42 @@ function _search(query: string, options: SearchOptions = {}): Array<{ airport: A
  * ```
  */
 export async function search(query: string = '', options: SearchOptions = {}): Promise<AirportSearchResult[]> {
-    if (typeof query !== 'string' || query.trim().length < 2) {
-        throw new Error("Search query must be at least 2 characters long.");
+    if (typeof query !== 'string') {
+        throw new Error("Search query must be a string.");
     }
     if (query.length > 100) {
         throw new Error("Search query must not exceed 100 characters.");
+    }
+    const normalizedQuery = normalizeText(query);
+    if (normalizedQuery.length < 2) {
+        throw new Error("Search query must contain at least 2 letters or digits.");
+    }
+    if (options === null || typeof options !== 'object' || Array.isArray(options)) {
+        throw new Error("Invalid options. Provide an object with optional limit, scheduledOnly, types, country_code, and fuzzy fields.");
     }
     const limit = options.limit ?? 10;
     if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1 || limit > 100) {
         throw new Error("Invalid limit. Must be an integer between 1 and 100.");
     }
-    return _search(query, { ...options, limit }).map(({ airport, score, matchType }) => ({
+    if (options.scheduledOnly !== undefined && typeof options.scheduledOnly !== 'boolean') {
+        throw new Error("Invalid scheduledOnly. Expected a boolean.");
+    }
+    if (options.fuzzy !== undefined && typeof options.fuzzy !== 'boolean') {
+        throw new Error("Invalid fuzzy. Expected a boolean.");
+    }
+    if (options.types !== undefined) {
+        if (!Array.isArray(options.types) || options.types.length === 0 || options.types.some(type => typeof type !== 'string' || type.trim() === '')) {
+            throw new Error("Invalid types. Expected a non-empty array of airport type strings.");
+        }
+    }
+    let countryCode: string | undefined;
+    if (options.country_code !== undefined) {
+        if (typeof options.country_code !== 'string' || !/^[A-Za-z]{2}$/.test(options.country_code)) {
+            throw new Error("Invalid country_code. Expected a 2-letter country code, e.g. 'GB'.");
+        }
+        countryCode = options.country_code.toUpperCase();
+    }
+    return _search(query, { ...options, ...(countryCode ? { country_code: countryCode } : {}), limit }).map(({ airport, score, matchType }) => ({
         ...airport,
         score: Math.round(score * 100) / 100,
         matchType,
@@ -1352,8 +1486,9 @@ export async function getAirportsByCity(city: string = ''): Promise<Airport[]> {
  * ```
  */
 export async function getAirportsByCityCode(cityCode: string = ''): Promise<Airport[]> {
-    validateRegex(cityCode, /^[A-Z]{3}$/, "Invalid city code format. Please provide a 3-letter uppercase code, e.g., 'NYC'.");
-    const results = getCityCodeIndex().get(cityCode) || [];
+    const code = normalizeCode(cityCode);
+    validateRegex(code, /^[A-Z]{3}$/, "Invalid city code format. Please provide a 3-letter code, e.g., 'NYC'.");
+    const results = getCityCodeIndex().get(code) || [];
     return copyAirports(sortByImportance(results));
 }
 
@@ -1367,10 +1502,16 @@ const partsFormatterCache = new Map<string, Intl.DateTimeFormat>();
  * Converts a DateInput to a valid Date.
  * @private
  */
-function toDate(input: DateInput | undefined): Date {
+function toDate(input: DateInput | null | undefined): Date {
+    if (input === null) {
+        throw new Error("Invalid date. Provide a Date, epoch milliseconds, or an ISO 8601 string (null is not a date).");
+    }
     const date = input === undefined ? new Date() : input instanceof Date ? new Date(input.getTime()) : new Date(input);
     if (isNaN(date.getTime())) {
         throw new Error("Invalid date. Provide a Date, epoch milliseconds, or an ISO 8601 string.");
+    }
+    if (date.getUTCFullYear() < 1) {
+        throw new Error("Invalid date. Dates before year 1 are not supported.");
     }
     return date;
 }
@@ -1392,13 +1533,20 @@ function zonedParts(timeZone: string, date: Date) {
         partsFormatterCache.set(timeZone, fmt);
     }
     const p: Record<string, number> = {};
+    let era = '';
     for (const part of fmt.formatToParts(date)) {
-        if (part.type !== 'literal') p[part.type] = Number(part.value);
+        if (part.type === 'era') era = part.value;
+        else if (part.type !== 'literal') p[part.type] = Number(part.value);
     }
     const hour = p.hour === 24 ? 0 : p.hour;
-    const asUtc = Date.UTC(p.year, p.month - 1, p.day, hour, p.minute, p.second);
-    const offsetMinutes = Math.round((asUtc - Math.floor(date.getTime() / 1000) * 1000) / 60000);
-    return { year: p.year, month: p.month, day: p.day, hour, minute: p.minute, second: p.second, offsetMinutes };
+    // Astronomical year numbering (1 BC = 0), in case a caller reaches this with an ancient date.
+    const year = era === 'BC' ? 1 - p.year : p.year;
+    // Date.UTC maps years 0-99 to 1900-1999, so build the timestamp with setUTCFullYear.
+    const asUtcDate = new Date(0);
+    asUtcDate.setUTCFullYear(year, p.month - 1, p.day);
+    asUtcDate.setUTCHours(hour, p.minute, p.second, 0);
+    const offsetMinutes = Math.round((asUtcDate.getTime() - Math.floor(date.getTime() / 1000) * 1000) / 60000);
+    return { year, month: p.month, day: p.day, hour, minute: p.minute, second: p.second, offsetMinutes };
 }
 
 /**
@@ -1463,10 +1611,13 @@ export async function getLocalTime(code: string, date?: DateInput): Promise<Airp
     const instant = toDate(date);
     const p = zonedParts(timeZone, instant);
 
-    // DST is in effect when the current offset is above the zone's standard (lower) offset this year.
+    // The standard offset is the lower of the January/July offsets (works for both hemispheres).
+    // When they agree, any different offset is a temporary shift (e.g. Morocco's Ramadan
+    // change, which is a negative DST and otherwise looks like a constant offset all year).
     const jan = zonedParts(timeZone, new Date(Date.UTC(p.year, 0, 1))).offsetMinutes;
     const jul = zonedParts(timeZone, new Date(Date.UTC(p.year, 6, 1))).offsetMinutes;
-    const isDst = jan !== jul && p.offsetMinutes === Math.max(jan, jul);
+    const standardOffset = jan === jul ? jan : Math.min(jan, jul);
+    const isDst = p.offsetMinutes !== standardOffset;
 
     const pad = (n: number, w = 2) => String(n).padStart(w, '0');
     const dateStr = `${pad(p.year, 4)}-${pad(p.month)}-${pad(p.day)}`;
@@ -1505,13 +1656,22 @@ export async function getLocalTime(code: string, date?: DateInput): Promise<Airp
 export async function formatAirportTime(code: string, options: FormatAirportTimeOptions = {}): Promise<string | null> {
     const timeZone = _getTimeZone(code);
     if (!timeZone) return null;
+    if (options === null || typeof options !== 'object' || Array.isArray(options)) {
+        throw new Error("Invalid options. Provide an object with optional date, locale, and Intl.DateTimeFormat fields.");
+    }
     const { date, locale = 'en-US', ...intlOptions } = options;
     const hasFields = ['dateStyle', 'timeStyle', 'year', 'month', 'day', 'weekday', 'hour', 'minute', 'second', 'era', 'timeZoneName', 'dayPeriod', 'fractionalSecondDigits']
         .some(k => (intlOptions as Record<string, unknown>)[k] !== undefined);
     const formatOptions: Intl.DateTimeFormatOptions = hasFields
         ? { ...intlOptions, timeZone }
         : { dateStyle: 'medium', timeStyle: 'short', ...intlOptions, timeZone };
-    return new Intl.DateTimeFormat(locale, formatOptions).format(toDate(date));
+    const instant = toDate(date);
+    try {
+        return new Intl.DateTimeFormat(locale, formatOptions).format(instant);
+    } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        throw new Error(`Invalid date/time format options for locale "${locale}": ${message}`);
+    }
 }
 
 /**
@@ -1603,12 +1763,13 @@ export async function getAirportLinks(code: string): Promise<AirportLinks | null
  * ```
  */
 export async function getAirportStatsByCountry(countryCode: string = ''): Promise<AirportCountryStats> {
-    validateRegex(countryCode, /^[A-Z]{2}$/, "Invalid Country Code format. Please provide a 2-letter uppercase code, e.g., 'US'.");
+    const code = normalizeCode(countryCode);
+    validateRegex(code, /^[A-Z]{2}$/, "Invalid Country Code format. Please provide a 2-letter code, e.g., 'US'.");
     const index = getCountryIndex();
-    const airports = index.get(countryCode) || [];
+    const airports = index.get(code) || [];
 
     if (airports.length === 0) {
-        throw new Error(`No airports found for Country Code: ${countryCode}`);
+        throw new Error(`No airports found for Country Code: ${code}`);
     }
 
     const timezonesSet = new Set<string>();
@@ -1672,12 +1833,13 @@ export async function getAirportStatsByCountry(countryCode: string = ''): Promis
  * ```
  */
 export async function getAirportStatsByContinent(continentCode: string = ''): Promise<AirportContinentStats> {
-    validateRegex(continentCode, /^[A-Z]{2}$/, "Invalid Continent Code format. Please provide a 2-letter uppercase code, e.g., 'AS'.");
+    const code = normalizeCode(continentCode);
+    validateRegex(code, /^[A-Z]{2}$/, "Invalid Continent Code format. Please provide a 2-letter code, e.g., 'AS'.");
     const index = getContinentIndex();
-    const airports = index.get(continentCode) || [];
+    const airports = index.get(code) || [];
 
     if (airports.length === 0) {
-        throw new Error(`No airports found for Continent Code: ${continentCode}`);
+        throw new Error(`No airports found for Continent Code: ${code}`);
     }
 
     const timezonesSet = new Set<string>();
@@ -1745,27 +1907,33 @@ export async function getAirportStatsByContinent(continentCode: string = ''): Pr
  * ```
  */
 export async function getLargestAirportsByContinent(continentCode: string = '', limit: number = 10, sortBy: SortBy = 'runway'): Promise<Airport[]> {
-    validateRegex(continentCode, /^[A-Z]{2}$/, "Invalid Continent Code format. Please provide a 2-letter uppercase code, e.g., 'AS'.");
-    if (typeof limit !== 'number' || !isFinite(limit) || limit < 1 || limit > 1000) {
-        throw new Error("Invalid limit. Must be a finite number between 1 and 1000.");
+    const code = normalizeCode(continentCode);
+    validateRegex(code, /^[A-Z]{2}$/, "Invalid Continent Code format. Please provide a 2-letter code, e.g., 'AS'.");
+    if (typeof limit !== 'number' || !Number.isInteger(limit) || limit < 1 || limit > 1000) {
+        throw new Error("Invalid limit. Must be an integer between 1 and 1000.");
     }
     if (sortBy !== 'runway' && sortBy !== 'elevation') {
         throw new Error("Invalid sortBy value. Must be 'runway' or 'elevation'.");
     }
     const index = getContinentIndex();
-    const airports = index.get(continentCode) || [];
+    const airports = index.get(code) || [];
 
     if (airports.length === 0) {
-        throw new Error(`No airports found for Continent Code: ${continentCode}`);
+        throw new Error(`No airports found for Continent Code: ${code}`);
     }
 
-    const sorted = [...airports].sort((a, b) => {
-        if (sortBy === 'elevation') {
-            return (b.elevation_ft ?? 0) - (a.elevation_ft ?? 0);
-        } else {
-            return (b.runway_length ?? 0) - (a.runway_length ?? 0);
-        }
-    });
+    const cacheKey = `${code}:${sortBy}`;
+    let sorted = continentSortCache.get(cacheKey);
+    if (!sorted) {
+        sorted = [...airports].sort((a, b) => {
+            if (sortBy === 'elevation') {
+                return (b.elevation_ft ?? 0) - (a.elevation_ft ?? 0);
+            } else {
+                return (b.runway_length ?? 0) - (a.runway_length ?? 0);
+            }
+        });
+        continentSortCache.set(cacheKey, sorted);
+    }
 
     return copyAirports(sorted.slice(0, limit));
 }
@@ -1839,9 +2007,9 @@ export async function calculateDistanceMatrix(codes: string[] = []): Promise<Dis
     }));
 
     const n = codes.length;
-    const distancesObj: Record<string, Record<string, number>> = Object.create(null);
+    const distancesObj: Record<string, Record<string, number>> = {};
     for (let i = 0; i < n; i++) {
-        distancesObj[codes[i]] = Object.create(null);
+        distancesObj[codes[i]] = {};
         distancesObj[codes[i]][codes[i]] = 0;
     }
 
@@ -1942,11 +2110,13 @@ export async function findNearestAirport(lat: number, lon: number, filters: Airp
  * ```
  */
 export async function validateIataCode(code: string = ''): Promise<boolean> {
-    if (typeof code !== 'string' || !/^[A-Z]{3}$/.test(code)) {
+    if (typeof code !== 'string') return false;
+    const normalized = normalizeCode(code);
+    if (!/^[A-Z]{3}$/.test(normalized)) {
         return false;
     }
     const index = getIataIndex();
-    return index.has(code);
+    return index.has(normalized);
 }
 
 /**
@@ -1962,11 +2132,13 @@ export async function validateIataCode(code: string = ''): Promise<boolean> {
  * ```
  */
 export async function validateIcaoCode(code: string = ''): Promise<boolean> {
-    if (typeof code !== 'string' || !/^[A-Z0-9]{4}$/.test(code)) {
+    if (typeof code !== 'string') return false;
+    const normalized = normalizeCode(code);
+    if (!/^[A-Z0-9]{4}$/.test(normalized)) {
         return false;
     }
     const index = getIcaoIndex();
-    return index.has(code);
+    return index.has(normalized);
 }
 
 /**

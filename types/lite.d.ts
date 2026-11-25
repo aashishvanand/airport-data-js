@@ -5,3 +5,4 @@
  * fields. `getAirportLinks` therefore returns an object with every link undefined.
  */
 export * from './core';
+export { executeTool } from './execute';

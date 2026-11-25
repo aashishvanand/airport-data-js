@@ -11,8 +11,10 @@
 export interface Airport {
     /** 3-letter IATA airport code (e.g., "SIN", "LHR", "JFK") */
     iata: string;
-    /** 4-letter ICAO airport code (e.g., "WSSS", "EGLL", "KJFK") */
+    /** 4-letter ICAO airport code (e.g., "WSSS", "EGLL", "KJFK"). Empty when unknown. */
     icao: string;
+    /** FAA location identifier for US airports whose FAA code is not a 4-character ICAO code (e.g., "80F"). */
+    faa_code?: string;
     /** IANA timezone identifier (e.g., "Asia/Singapore") */
     time: string;
     /**
@@ -87,6 +89,8 @@ export interface AirportWithDistance extends Airport {
 export interface AirportFilters {
     iata?: string;
     icao?: string;
+    /** FAA location identifier (US airports without a 4-character ICAO code). */
+    faa_code?: string;
     time?: string;
     utc?: number;
     country_code?: string;
@@ -337,16 +341,17 @@ export declare function searchByName(query?: string): Promise<Airport[]>;
  * @param lat - Latitude of the center point (-90 to 90).
  * @param lon - Longitude of the center point (-180 to 180).
  * @param radiusKm - The search radius in kilometers (default: 100).
- * @returns Array of airports within the radius.
+ * @param limit - Optional maximum number of results to return (nearest first).
+ * @returns Airports within the radius, nearest first, each with its `distance` in kilometers.
  *
  * @example
  * ```typescript
  * // Find airports within 50km of central London
  * const airports = await findNearbyAirports(51.5074, -0.1278, 50);
- * console.log(airports.some(a => a.iata === 'LHR')); // true
+ * console.log(airports[0].iata, airports[0].distance); // "LHR" 23.3
  * ```
  */
-export declare function findNearbyAirports(lat: number, lon: number, radiusKm?: number): Promise<Airport[]>;
+export declare function findNearbyAirports(lat: number, lon: number, radiusKm?: number, limit?: number): Promise<AirportWithDistance[]>;
 /**
  * Finds airports by their type classification.
  * Uses a pre-built index for O(1) lookup on exact matches.
@@ -364,7 +369,7 @@ export declare function findNearbyAirports(lat: number, lon: number, radiusKm?: 
  * console.log(largeAirports.length); // 300+
  * ```
  */
-export declare function getAirportsByType(type?: string): Promise<Airport[]>;
+export declare function getAirportsByType(type?: string, limit?: number): Promise<Airport[]>;
 /**
  * Calculates the great-circle distance between two airports using the Haversine formula.
  *

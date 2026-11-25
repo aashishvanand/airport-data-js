@@ -368,6 +368,8 @@ describe('Airport Data Library (Live Data)', () => {
             expect(await validateIataCode('SIN')).toBe(true);
             expect(await validateIataCode('LHR')).toBe(true);
             expect(await validateIataCode('JFK')).toBe(true);
+            expect(await validateIataCode('lhr')).toBe(true);
+            expect(await validateIataCode(' LHR ')).toBe(true);
         });
 
         test('should return false for invalid IATA codes', async () => {
@@ -378,7 +380,8 @@ describe('Airport Data Library (Live Data)', () => {
         test('should return false for incorrect format', async () => {
             expect(await validateIataCode('ABCD')).toBe(false);
             expect(await validateIataCode('AB')).toBe(false);
-            expect(await validateIataCode('abc')).toBe(false);
+            expect(await validateIataCode('abc')).toBe(true); // ABC is Albacete
+            expect(await validateIataCode('zzz')).toBe(false);
             expect(await validateIataCode('')).toBe(false);
         });
     });
@@ -388,6 +391,8 @@ describe('Airport Data Library (Live Data)', () => {
             expect(await validateIcaoCode('WSSS')).toBe(true);
             expect(await validateIcaoCode('EGLL')).toBe(true);
             expect(await validateIcaoCode('KJFK')).toBe(true);
+            expect(await validateIcaoCode('egll')).toBe(true);
+            expect(await validateIcaoCode(' EGLL ')).toBe(true);
         });
 
         test('should return false for invalid ICAO codes', async () => {
@@ -398,7 +403,7 @@ describe('Airport Data Library (Live Data)', () => {
         test('should return false for incorrect format', async () => {
             expect(await validateIcaoCode('ABC')).toBe(false);
             expect(await validateIcaoCode('ABCDE')).toBe(false);
-            expect(await validateIcaoCode('abcd')).toBe(false);
+            expect(await validateIcaoCode('xxxx')).toBe(false);
             expect(await validateIcaoCode('')).toBe(false);
         });
     });

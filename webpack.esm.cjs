@@ -23,6 +23,11 @@ module.exports = {
     splitChunks: false,
     runtimeChunk: false
   },
+  // Share the CJS payload files with the CJS bundle; Node/bundlers handle the interop.
+  externals: {
+    './airports.data.json': 'module ./payload.full.js',
+    './airports.lite.data.json': 'module ./payload.lite.js'
+  },
   module: {
     rules: [
       // package.json is "type": "commonjs", so mark the tsc ESM output as ES modules explicitly.
