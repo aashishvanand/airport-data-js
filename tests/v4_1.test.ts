@@ -466,6 +466,15 @@ describe('Input validation and edge cases', () => {
         expect((await lib.findNearestAirport(51.5074, -0.1278, { iata: 'lhr' }))!.iata).toBe('LHR');
     });
 
+    test('code filters accept padded input', async () => {
+        expect((await lib.findAirports({ iata: ' LHR ' }))[0].icao).toBe('EGLL');
+        expect((await lib.findAirports({ icao: ' egll ' }))[0].iata).toBe('LHR');
+        expect((await lib.findAirports({ country_code: ' gb ', type: ' Large_Airport ' })).length).toBeGreaterThan(5);
+        expect((await lib.findAirports({ city_code: 'lon ' })).length).toBeGreaterThan(1);
+        expect(await lib.getAirportCount({ continent: ' eu ' })).toBeGreaterThan(100);
+        expect((await lib.search('london', { country_code: ' gb ' }))[0].country_code).toBe('GB');
+    });
+
     test('FAA identifiers are stored separately from ICAO', async () => {
         const [ate]: Airport[] = await lib.getAirportByIata('ATE');
         expect(ate.icao).toBe('');
