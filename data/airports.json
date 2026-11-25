@@ -66069,7 +66069,7 @@
     "airport": "Alexandria International Airport",
     "latitude": 30.932481,
     "longitude": 29.696462,
-    "elevation_ft": 6930,
+    "elevation_ft": 171,
     "type": "medium_airport",
     "scheduled_service": "TRUE",
     "wikipedia": "https://en.wikipedia.org/wiki/Alexandria_International_Airport_(Egypt)",
@@ -66079,7 +66079,7 @@
     "radarbox_url": "https://www.radarbox.com/airport/HEAX",
     "flightaware_url": "https://www.flightaware.com/live/airport/HEAX",
     "city": "Alexandria",
-    "city_code": "HBE"
+    "city_code": "ALY"
   },
   {
     "iata": "HBG",
