@@ -1,7 +1,13 @@
 name: Weekly data refresh
 
-# Pulls the latest OurAirports export, adds new scheduled-service airports and
-# newly assigned IATA codes, fills city names, validates, and opens a PR.
+# Weekly (and "Run workflow" with mode=report): compares the dataset with the
+# latest OurAirports export without changing it, and opens an issue listing new
+# scheduled-service airports, IATA codes to set, continent changes, city updates
+# and IATA mismatches, so they can be reviewed and closed in batches.
+#
+# "Run workflow" with mode=apply: applies the routine updates (cities, IATA codes,
+# continents) plus only the airports listed in `add` (after they have been checked),
+# validates, builds, tests and opens a PR. Airports are never added automatically.
 # Note: PRs opened with GITHUB_TOKEN do not trigger other workflows, so the
 # build and tests run here before the PR is opened.
 
@@ -10,8 +16,15 @@ on:
     - cron: '0 6 * * 1' # Mondays 06:00 UTC
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'report = open a review issue; apply = open a PR with routine updates and the airports in "add"'
+        type: choice
+        options:
+          - report
+          - apply
+        default: report
       add:
-        description: 'Extra IATA codes to add even without scheduled service (comma-separated, e.g. FSH,BZJ)'
+        description: 'apply only: checked IATA codes to add (comma-separated, e.g. FSH,BZJ)'
         required: false
         default: ''
 
@@ -22,7 +35,69 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  report:
+    if: github.event_name == 'schedule' || inputs.mode == 'report'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compare with OurAirports (dry run)
+        run: npm run refresh:data -- --no-auto-add --summary "$RUNNER_TEMP/summary.md" --json "$RUNNER_TEMP/summary.json"
+
+      - name: Check for anything to review
+        id: review
+        run: |
+          TOTAL=$(node -p "const s = require(process.env.RUNNER_TEMP + '/summary.json'); s.candidates + s.iataFilled + s.continentChanged + s.iataConflicts + s.cityChanged + s.cityCodeChanged")
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$TOTAL" = "0" ]; then echo "Nothing to review this week." >> "$GITHUB_STEP_SUMMARY"; fi
+
+      - name: Open review issue
+        if: steps.review.outputs.total != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/data-refresh.yml
+        run: |
+          {
+            cat "$RUNNER_TEMP/summary.md"
+            echo
+            echo '---'
+            echo
+            echo 'Nothing has been changed. To apply, check the airports above, then [run this workflow]('"$RUN_URL"') with `mode: apply` and the checked IATA codes in `add` (e.g. `FSH,BZJ`). That opens a PR with those airports plus the city, IATA and continent updates listed here. IATA mismatches are never changed automatically.'
+            echo
+            echo 'Older open `data-refresh` issues are covered by this one and can be closed.'
+          } > "$RUNNER_TEMP/body.md"
+          gh label create data-refresh --color 0E8A16 --description "Weekly OurAirports refresh report" 2>/dev/null || true
+          # Skip if the latest open report already lists exactly the same items.
+          LATEST=$(gh issue list --label data-refresh --state open --limit 1 --json body --jq '.[0].body // ""')
+          if [ "$LATEST" = "$(cat "$RUNNER_TEMP/body.md")" ]; then
+            echo "Same as the latest open report; not opening another issue." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh issue create \
+            --title "Data refresh: review OurAirports changes $(date -u +%Y-%m-%d)" \
+            --label data-refresh \
+            --body-file "$RUNNER_TEMP/body.md"
+
+  apply:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'apply'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -43,9 +118,9 @@ jobs:
 
       - name: Refresh from OurAirports
         env:
-          EXTRA_ADD: ${{ github.event.inputs.add }}
+          EXTRA_ADD: ${{ inputs.add }}
         run: |
-          ARGS=(--write --summary "$RUNNER_TEMP/summary.md")
+          ARGS=(--write --no-auto-add --summary "$RUNNER_TEMP/summary.md")
           if [ -n "$EXTRA_ADD" ]; then ARGS+=(--add "$EXTRA_ADD"); fi
           npm run refresh:data -- "${ARGS[@]}"
 
@@ -54,7 +129,7 @@ jobs:
         run: |
           if git diff --quiet -- data/airports.json; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "No dataset changes this week." >> "$GITHUB_STEP_SUMMARY"
+            echo "No dataset changes." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
@@ -78,19 +153,19 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add data/airports.json src/airports.data.json src/airports.lite.data.json
-          git commit -m "chore(data): weekly OurAirports refresh $(date -u +%Y-%m-%d)"
+          git commit -m "chore(data): OurAirports refresh $(date -u +%Y-%m-%d)"
           git push --force origin "$BRANCH"
           {
             echo '```'
             cat "$RUNNER_TEMP/summary.md"
             echo '```'
             echo
-            echo "Generated by the weekly data refresh workflow. Review the IATA mismatches list before merging; those records are not changed automatically."
+            echo "Generated by the data refresh workflow (mode: apply). Only the airports passed in \`add\` were added; IATA mismatches are not changed."
           } > "$RUNNER_TEMP/body.md"
           if gh pr view "$BRANCH" --json number >/dev/null 2>&1; then
             gh pr edit "$BRANCH" --body-file "$RUNNER_TEMP/body.md"
           else
             gh pr create --base main --head "$BRANCH" \
-              --title "chore(data): weekly OurAirports refresh $(date -u +%Y-%m-%d)" \
+              --title "chore(data): OurAirports refresh $(date -u +%Y-%m-%d)" \
               --body-file "$RUNNER_TEMP/body.md"
           fi

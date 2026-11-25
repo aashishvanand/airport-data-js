@@ -828,8 +828,8 @@ function normalizeFilterValue(key: string, value: unknown): unknown {
     if (typeof value !== 'string') {
         throw new Error(`Invalid value for filter '${key}'. Expected a string.`);
     }
-    if (UPPERCASE_FILTER_KEYS.has(key)) return value.toUpperCase();
-    if (key === 'type') return value.toLowerCase();
+    if (UPPERCASE_FILTER_KEYS.has(key)) return value.trim().toUpperCase();
+    if (key === 'type') return value.trim().toLowerCase();
     return value;
 }
 
@@ -1428,10 +1428,11 @@ export async function search(query: string = '', options: SearchOptions = {}): P
     }
     let countryCode: string | undefined;
     if (options.country_code !== undefined) {
-        if (typeof options.country_code !== 'string' || !/^[A-Za-z]{2}$/.test(options.country_code)) {
+        const trimmed = typeof options.country_code === 'string' ? options.country_code.trim() : '';
+        if (!/^[A-Za-z]{2}$/.test(trimmed)) {
             throw new Error("Invalid country_code. Expected a 2-letter country code, e.g. 'GB'.");
         }
-        countryCode = options.country_code.toUpperCase();
+        countryCode = trimmed.toUpperCase();
     }
     return _search(query, { ...options, ...(countryCode ? { country_code: countryCode } : {}), limit }).map(({ airport, score, matchType }) => ({
         ...airport,

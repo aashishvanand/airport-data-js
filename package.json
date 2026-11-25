@@ -1,6 +1,6 @@
 {
   "name": "airport-data-js",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "type": "commonjs",
   "description": "A comprehensive TypeScript library providing easy retrieval of airport data based on IATA, ICAO, city codes, country codes, and continents. Includes LLM tool definitions for AI integration.",
   "main": "lib/index.js",
@@ -119,7 +119,6 @@
   },
   "devDependencies": {
     "@babel/core": "^8.1.0",
-    "@babel/plugin-transform-modules-commonjs": "^8.0.1",
     "@babel/preset-env": "^8.0.7",
     "@types/node": "^26.6.6",
     "babel-loader": "^10.1.1",

@@ -6,34 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [4.1.0] - 2026-11-10
+## [4.1.1] - 2026-11-25
 
 ### 🆕 New Features
 
-- **City data** — every airport now has `city` (municipality from OurAirports; set on 16,274 records) and `city_code` (IATA city/metro code such as `NYC`, `LON`, `TYO`; set on 9,609 records). Both are `""` when unknown. `findAirports` accepts `city` and `city_code` filters.
-- **`search(query, options)`** — unified, ranked search: exact IATA > ICAO > metro code > exact city > city prefix > name prefix > substring > typo-tolerant match, with major scheduled-service airports first. Case- and accent-insensitive (`zurich` finds `Zürich`, `tromso` finds `Tromsø`). An exact city match pulls in the rest of the metro area, so `search('New York')` returns JFK, EWR and LGA. Results include `score` and `matchType`. Options: `limit`, `scheduledOnly`, `types`, `country_code`, `fuzzy`.
-- **`getAirportsByCity(city)`** and **`getAirportsByCityCode(cityCode)`** — city and metro-area lookups, major airports first.
-- **City aliases** — `search` and `getAirportsByCity` recognize common former and alternative names (Bombay, Bangalore, Peking, Saigon, Kiev, Athens, Brussels, Roma, München, ...).
-- **DST-aware time helpers** — `getUtcOffset(code, date?)`, `getLocalTime(code, date?)` and `formatAirportTime(code, { date, locale, ...Intl options })`, built on `Intl.DateTimeFormat` with no new dependencies.
-- **ES module builds** — `import` now resolves to `lib/*.mjs` with matching `.d.mts` types, alongside the existing CommonJS build.
-- **`airport-data-js/lite`** — same API with a ~540 KB bundle (vs ~1.3 MB): only airports with an IATA code, no `wikipedia`/`website`/tracker URL fields, coordinates rounded to 4 decimals. Also available as `dist/airport-data.lite.min.js`.
-- **LLM tools** — `search`, `getAirportsByCity`, `getAirportsByCityCode`, `getUtcOffset`, `getLocalTime` and `formatAirportTime` added to `airport-data-js/tools`. Tool schemas now set `additionalProperties: false` and declare `pattern`, `minimum`/`maximum` and `minItems`/`maxItems` constraints, so frameworks can reject bad arguments before the call.
 - **`executeTool(name, args)`** — runs any `airport-data-js/tools` definition against the library, so an LLM tool call can be dispatched in one line instead of a hand-written switch. Exported from the main and `lite` entry points (not from `tools`, which stays small).
-- **`Airport.faa_code`** — FAA location identifier for US airports whose FAA code is not a 4-character ICAO code (e.g. ATE → `80F`, BFG → `U07`; set on 90 records). These codes were previously stored in `icao`. Also a new `findAirports` filter.
+- **`Airport.faa_code`** — FAA location identifier for US airports whose FAA code is not a 4-character ICAO code (e.g. ATE → `80F`, BFG → `U07`; set on 87 records). These codes were previously stored in `icao`. Also a new `findAirports` filter.
 - **`findNearbyAirports(lat, lon, radiusKm, limit?)`** — results now come back nearest first with a `distance` field (km), and an optional `limit` caps them.
 - **`getAirportsByType(type, limit?)`** — optional `limit`.
 
 ### 🔄 Changes
 
-- **`getAutocompleteSuggestions`** now uses the `search` ranking (codes, cities, metro codes and names; major airports first) instead of returning the first 10 name/IATA substring matches in dataset order. Partial ICAO codes also match (`EGL` suggests `EGLL`).
-- **`searchByName`** is now accent-insensitive.
 - **Codes are case- and whitespace-insensitive.** IATA, ICAO, country, continent and city-code arguments are trimmed and uppercased, so `'lhr'`, `' LHR '` and `'LHR'` are equivalent (lowercase input used to throw). This applies to lookups, `validateIataCode`/`validateIcaoCode`, `findAirports` filters and `search`'s `country_code`.
-- **Stricter input validation.** `findAirports`, `findNearestAirport` and `getAirportCount` filters are type-checked: numbers must be finite, `scheduled_service` accepts a boolean or `"TRUE"`/`"FALSE"`, `undefined` values are ignored, and a non-object argument throws. `search` and `formatAirportTime` reject malformed options; `null` is not accepted as a date; `getLargestAirportsByContinent` requires an integer `limit`.
-- **Search queries** must contain at least 2 letters or digits after normalization. A query like `"!!"` throws instead of returning `[]`.
-- **`Airport.utc`** is marked `@deprecated`: it is a July snapshot and is wrong for about half the year in DST regions (8,434 airports on 2026-11-10). Use `getUtcOffset`.
+- **Stricter input validation.** `findAirports`, `findNearestAirport` and `getAirportCount` filters are type-checked: numbers must be finite, `scheduled_service` accepts a boolean or `"TRUE"`/`"FALSE"`, `undefined` values are ignored, and a non-object argument throws. `search` and `formatAirportTime` reject malformed options; `null` is no longer accepted as a date; `getLargestAirportsByContinent` requires an integer `limit`.
+- **Search queries** must contain at least 2 letters or digits after normalization. A query like `"!!"` now throws instead of returning `[]`. Letters that Unicode does not decompose are folded too, so `Tromsø`, `Łódź` and `Straße` match.
+- **LLM tool schemas** set `additionalProperties: false` and declare `pattern`, `minimum`/`maximum` and `minItems`/`maxItems` constraints, so frameworks can reject bad arguments before the call.
 - **Faster and smaller.**
-  - The bundled dataset is now stored column by column, which cuts the full bundle from ~1.5 MB to ~1.3 MB with no API change.
-  - The CommonJS and ESM builds share one copy of the dataset (`lib/payload.*.js`) instead of each embedding their own, so the package is 3.9 MB unpacked (5.6 MB before).
+  - The published package is down from 5.6 MB to 3.9 MB unpacked: the CommonJS and ESM builds share one copy of the dataset (`lib/payload.*.js`) instead of embedding four.
   - Node, Bun and Deno decompress with built-in zlib and `Buffer` instead of pako.
   - The compressed payload is released from memory once loaded.
   - Nearby searches binary-search a latitude-sorted index.
@@ -43,12 +32,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🐛 Fixes
 
+- **Alexandria, Egypt** — Borg El Arab was renamed Alexandria International Airport and took over the `ALY`/`HEAX` codes; the old El Nouzha record is marked closed. **`HBE` no longer exists**: look it up as `ALY`. Its elevation is corrected from 6,930 ft to 171 ft, and its city code is `ALY`.
+- **Codes that are not ICAO codes removed from `icao`** — 87 US records stored a 3-character FAA identifier there (e.g. `80F`); it is now in `faa_code` and `icao` is `""`. Their RadarBox/FlightAware URLs, which used that identifier, are cleared. Vejrø (Denmark) had the invalid `EK_4`, now `""`.
+- **Duplicate airports merged** — 13 airports were stored two or three times, usually a stale code next to the current one. Each is now one record with OurAirports' current code and name, keeping the city, Wikipedia link, elevation and runway length from whichever copy had them. **These codes no longer exist**: `MX31` (now `MMGA`, Creel), `1AA0` (`K1A0`, Dallas Bay Sky Park, marked closed), `K8M8` (`88MI`, Eagle II), `1SC6` and `2Q0` (`K2Q0`, Flying W), `SI7F` (`SI4O`), `KI19` (`KGDK`, Greene County/Lewis A. Jackson), `EFJI` (`EFIJ`), `KI43` (`KJRO`, James A Rhodes), `LSKV` (`LZKV`, Kvetoslavov), `KF97` (`TT97`, Seagraves), `UHQO` (`UHPS`, Sobolevo), and FAA identifiers `O48` (`KO48`, Salmon Bar) and `2N4` (`K2N4`, Owasco). Also removed a duplicate Kiskunlacháza (Hungary) record with the invalid ICAO `lhkk` (the `LHKK` record remains).
+- **Separate facilities that shared one position** — moved to their own coordinates, with names and types from OurAirports: Chame (MPCM, MPMC), Dillon Field (CZF2, ~135 km from where it was), Grand River Executive (CPP6), and the airport and seaplane base pairs at Carcross (CFA4, CEB7), Orillia (CNJ4, CNV6) and Carey Lake (CNX3, CNJ5). The seaplane bases were typed `medium_airport`; they are now `seaplane_base`, and the three airports are `small_airport`.
+- **BSZ** (Bosteri) — Flightradar24 link pointed at `FRU`.
+- **Cities** — stray trailing commas removed ("Baker,", "Isla Puná,", "White Springs,"), "Campo Do Meio" → "Campo do Meio", and Zephyr filled in for Dillon Field.
+- **HTTPS links** — 1,111 `website`/`wikipedia` links upgraded from `http://` to `https://` on hosts that serve TLS.
+
+### 🔧 Tooling
+
+- **Weekly data refresh opens an issue instead of a PR.** It runs as a dry run and lists new scheduled-service airports (with OurAirports links), IATA codes to set, continent and city changes, and IATA mismatches for review. Airports are only added after review: run the workflow with `mode: apply` and the checked codes in `add` to open a PR. New `refresh:data` flags: `--no-auto-add` (list candidates instead of adding them) and `--json` (counts for automation).
+- `refresh:data` keeps the existing city when OurAirports only appends a region ("Balivanich" → "Balivanich, Eilean Siar"), which would break exact city lookups, and strips trailing commas from city names. It also retries downloads with a timeout, refuses a truncated OurAirports export, and skips rows with invalid coordinates, country codes, types or URLs.
+- `npm run upgrade:https` (`scripts/upgrade_https.ts`) probes `http://` links and rewrites those whose hosts support HTTPS (dry run by default; `-- --write` saves).
+- `npm run build:payload` writes the shared dataset modules; `npm run build` now cleans output directories first.
+- `npm run check:duplicates` also validates ICAO format, `faa_code` format and `website`/`wikipedia` URLs, and fails when two records share exact coordinates.
+- CI runs typecheck, test typecheck (tests are now `strict`), dataset validation, `npm audit --audit-level=high` and a check that generated `types/` are committed. The release workflow audits at `high` instead of `critical` and creates releases with `gh`. All workflows set job timeouts and checkout with `persist-credentials: false`.
+
+### 📦 Dependencies
+
+- **`pako` is no longer a runtime dependency.** It is bundled into the browser build, so installing the package pulls no dependencies.
+- Removed dev dependencies `fs-extra`, `path-browserify` and `@babel/plugin-transform-modules-commonjs`, and `.babelrc`.
+- Dev: `@babel/core` 8.1.0 → 8.1.3.
+- GitHub Actions: `github/codeql-action` 4.38.3 → 4.39.4, `actions/checkout` pin comment corrected to v7.0.1.
+
+## [4.1.0] - 2026-11-10
+
+### 🆕 New Features
+
+- **City data** — every airport now has `city` (municipality from OurAirports; set on 16,274 records) and `city_code` (IATA city/metro code such as `NYC`, `LON`, `TYO`; set on 9,609 records). Both are `""` when unknown. `findAirports` accepts `city` and `city_code` filters.
+- **`search(query, options)`** — unified, ranked search: exact IATA > ICAO > metro code > exact city > city prefix > name prefix > substring > typo-tolerant match, with major scheduled-service airports first. Case- and accent-insensitive (`zurich` finds `Zürich`). An exact city match pulls in the rest of the metro area, so `search('New York')` returns JFK, EWR and LGA. Results include `score` and `matchType`. Options: `limit`, `scheduledOnly`, `types`, `country_code`, `fuzzy`.
+- **`getAirportsByCity(city)`** and **`getAirportsByCityCode(cityCode)`** — city and metro-area lookups, major airports first.
+- **City aliases** — `search` and `getAirportsByCity` recognize common former and alternative names (Bombay, Bangalore, Peking, Saigon, Kiev, Athens, Brussels, Roma, München, ...).
+- **DST-aware time helpers** — `getUtcOffset(code, date?)`, `getLocalTime(code, date?)` and `formatAirportTime(code, { date, locale, ...Intl options })`, built on `Intl.DateTimeFormat` with no new dependencies.
+- **ES module builds** — `import` now resolves to `lib/*.mjs` with matching `.d.mts` types, alongside the existing CommonJS build.
+- **`airport-data-js/lite`** — same API with a ~540 KB bundle (vs ~1.3 MB): only airports with an IATA code, no `wikipedia`/`website`/tracker URL fields, coordinates rounded to 4 decimals. Also available as `dist/airport-data.lite.min.js`.
+- **LLM tools** — `search`, `getAirportsByCity`, `getAirportsByCityCode`, `getUtcOffset`, `getLocalTime` and `formatAirportTime` added to `airport-data-js/tools`.
+
+### 🔄 Changes
+
+- **`getAutocompleteSuggestions`** now uses the `search` ranking (codes, cities, metro codes and names; major airports first) instead of returning the first 10 name/IATA substring matches in dataset order. Partial ICAO codes also match (`EGL` suggests `EGLL`).
+- **`searchByName`** is now accent-insensitive.
+- **`Airport.utc`** is marked `@deprecated`: it is a July snapshot and is wrong for about half the year in DST regions (8,434 airports on 2026-11-10). Use `getUtcOffset`.
+- The bundled dataset is now stored column by column, which cuts the full bundle from ~1.5 MB to ~1.3 MB with no API change.
+
+### 🐛 Fixes
+
 - **`findNearbyAirports`** now finds airports across the ±180° antimeridian. The longitude pre-filter compared raw values, so a search at -179.99° skipped airports at +179.87° (e.g. Taveuni, Fiji) ([#207](https://github.com/aashishvanand/airport-data-js/issues/207)). Searches whose circle contains a pole now cover every longitude, and the longitude bound is exact for large radii.
 - **Continents** — 238 records corrected. Each country now has one continent, except countries split by geography: Hawaii is `OC` ([#195](https://github.com/aashishvanand/airport-data-js/issues/195): OGG, BSF, HDH, HIK, WKL, Tern Island); Russia is split at the Urals (60°E; 122 records); Turkey at the Bosphorus (IST is `EU`, SAW is `AS`); Egypt's Sinai is `AS` (SSH, ELT, SKV, ...); Spain's Canary Islands, Ceuta and Melilla are `AF`; Colombia's San Andrés and Providencia are `NA`. Also fixed stray values such as UK railway stations in `NA`, German airports in `SA`/`OC` and US airports in `AS`/`AF`/`SA`/`EU`.
-- **Alexandria, Egypt** — Borg El Arab was renamed Alexandria International Airport and took over the `ALY`/`HEAX` codes; the old El Nouzha record is marked closed. **`HBE` no longer exists**: look it up as `ALY`.
 - **QSI, QDY, QSX** (US) — continent, Wikipedia link and elevation had been copied from other airports that share the IATA code (Moshi, Tanzania; New Amsterdam, Guyana; ...). QSI elevation 4,971 → 236 ft, QDY 7,359 → 2,417 ft (renamed "Ryan Field"), QSX 4,128 → 583 ft.
 - **ICAO codes from other airports removed**: BYL (`KBYL`, Liberia), LNQ (`KLNQ`, Papua New Guinea), SCA (`KSCA`, Colombia), LIJ (`ZSLI` is Lishui, China) and Lipetsk Air Base (`UUWL` is Luzhki Heliport). Their RadarBox/FlightAware URLs, which used the wrong code, are cleared.
-- **Non-ICAO codes removed from `icao`** — 109 records corrected. FAA identifiers moved to `faa_code`, wrong or local codes were replaced with the real ICAO code (e.g. `KI19` → `KGDK`, `EFJI` → `EFIJ`, `LSKV` → `LZKV`, `UHQO` → `UHPS`), and the RadarBox/FlightAware URLs built from the old codes were updated or cleared.
 - **Coordinates**: MPT (Maliana, Timor-Leste) moved ~100 km from the sea to the airport; LNQ (Loani) corrected per OurAirports.
 - **ANM** (Antsirabato) — city `Antsirabe` → `Antalaha` (the airport is on the northeast coast, 500+ km from Antsirabe).
 - **JPN** (Pentagon) — city code `OCW` (Washington, NC) → `WAS`, so it groups with IAD and DCA.
@@ -61,30 +94,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HTO** (East Hampton, NY) — the airport existed twice: a stale `HTO`/`KHTO` record and the current one under `JPX`/`KJPX` (`JPX` is the FAA code, not IATA). Merged into one record, `HTO`/`KJPX`.
 - **GYB** (Wodgina, Australia) — the code now belongs to the new Port Hedland/Wodgina Airport (`YWGA`), which carried `QBW` (Batemans Bay's code). The old Wodgina strip (`YWDC`) is marked closed.
 - **FYG** (Fuyong Ferry Port, Shenzhen) — removed the ICAO `KFYG`, which belongs to Washington Regional Airport, Missouri.
-- **BSZ** (Bosteri) — Flightradar24 link pointed at `FRU`.
-- Names, elevations, runway lengths and cities corrected on about 20 records from the FAA/OurAirports data (e.g. "DALLAS BAY SKY PARK" → "Dallas Bay Sky Park Airport").
-- Removed a duplicate Kiskunlacháza (Hungary) record with the invalid ICAO `lhkk`.
 
 ### 🗺️ Data updates
 
 - Added: **FSH** Syekh Hamzah Fansyuri (Indonesia, scheduled service), **BZJ** Bozhou (China, under construction), **DEJ** Tongren Dejiang (China, under construction), **DHH** Barkol Dahe (China), **BQR** Maulana Prins Mandapar Airstrip (Indonesia).
 - IATA codes set on existing records, from OurAirports: **LTH** (VVLT, Long Thanh), **QHR** (HAHM, Harar Meda), IMU (WAYG), GXM (WAGA), IAX (WAMS), KUB (WBAK), UCZ (SPIZ), ZLR (SCLN), IZM (LTFB), AIY (SNUI), CHE (EECL), UTE (FABU), AHG (FIMA), FDA (SKFU), DJR (YDAJ).
-- **HTTPS links** — 1,111 `website`/`wikipedia` links upgraded from `http://` to `https://` on hosts that serve TLS.
 
 ### 🔧 Tooling
 
-- `scripts/refresh_ourairports.ts` (`npm run refresh:data`) syncs with the latest OurAirports export: adds scheduled-service airports (or any codes passed with `--add`), sets newly assigned IATA codes, fills `city`/`city_code`, and lists IATA mismatches for review. Source records only count as a match within 50 km, so a reused code can't attach another airport's data. It also sets `continent` from the country and location (`scripts/continent.ts`) rather than copying OurAirports' per-airport value, which is inconsistent (e.g. Vladivostok-area airports tagged `EU`). Downloads retry with a timeout, a truncated export is refused, and rows with invalid coordinates, country codes, types or URLs are skipped.
+- `scripts/refresh_ourairports.ts` (`npm run refresh:data`) syncs with the latest OurAirports export: adds scheduled-service airports (or any codes passed with `--add`), sets newly assigned IATA codes, fills `city`/`city_code`, and lists IATA mismatches for review. Source records only count as a match within 50 km, so a reused code can't attach another airport's data. It also sets `continent` from the country and location (`scripts/continent.ts`) rather than copying OurAirports' per-airport value, which is inconsistent (e.g. Vladivostok-area airports tagged `EU`).
 - New weekly GitHub Action (`data-refresh.yml`) runs the refresh, validates, builds, tests and opens a PR.
-- `npm run upgrade:https` (`scripts/upgrade_https.ts`) probes `http://` links and rewrites those whose hosts support HTTPS (dry run by default; `-- --write` saves).
-- `npm run build:payload` writes the shared dataset modules; `npm run build` now cleans output directories first.
-- `npm run check:duplicates` now also fails on invalid IANA time zones, malformed `city`/`city_code`, non-string `iata`/`icao`, bad ICAO or `faa_code` format, and invalid `website`/`wikipedia` URLs.
+- `npm run check:duplicates` now also fails on invalid IANA time zones, malformed `city`/`city_code`, and non-string `iata`/`icao`.
 - The npm package now ships only `dist/airport-data.min.js` and `dist/airport-data.lite.min.js` from `dist/`, so stray local build output can't be published.
-- CI runs typecheck, test typecheck (tests are now `strict`), dataset validation, `npm audit --audit-level=high` and a check that generated `types/` are committed. The release workflow audits at `high` instead of `critical` and creates releases with `gh`. All workflows set job timeouts and checkout with `persist-credentials: false`.
 
 ### 📦 Dependencies
 
-- `pako` 3.0.2 → 3.0.3, and moved to a dev dependency: it is bundled into the browser build, so installing the package pulls no runtime dependencies.
-- Removed dev dependencies `fs-extra` and `path-browserify`, and `.babelrc`.
+- Runtime: `pako` 3.0.2 → 3.0.3.
 - Dev: `vitest` 5.0.2 → 5.1.0, `vite` 8.3.1 → 8.3.5, `webpack` 5.111.1 → 5.112.2, `webpack-cli` 7.2.3 → 7.3.1, `@babel/core` 8.0.6 → 8.1.0, `@babel/preset-env` 8.0.6 → 8.0.7, `@types/node` 26.6.3 → 26.6.6.
 - GitHub Actions: `actions/setup-node` 7.0.0 → 7.1.0, `actions/upload-artifact` 7.0.1 → 7.0.2, `ossf/scorecard-action` 2.4.4 → 2.5.0, `github/codeql-action` → 4.38.3.
 

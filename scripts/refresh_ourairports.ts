@@ -7,7 +7,8 @@
  *   2. Sets the IATA code on existing records whose IATA is empty when OurAirports
  *      has one for the same ICAO and the code is not already used.
  *   3. Adds airports whose IATA code is missing from the dataset when they have
- *      scheduled service (or are listed explicitly with --add).
+ *      scheduled service (or are listed explicitly with --add). With --no-auto-add,
+ *      only the --add codes are added; the rest are listed as candidates to review.
  *   4. Sets `continent` from the country and, for transcontinental countries, the
  *      location (scripts/continent.ts).
  *   5. Reports, without changing, IATA codes that differ between the dataset and
@@ -15,10 +16,12 @@
  *
  * Usage:
  *   npx tsx scripts/refresh_ourairports.ts [--csv path] [--runways path]
- *       [--add FSH,BZJ] [--write] [--summary path]
+ *       [--add FSH,BZJ] [--no-auto-add] [--write] [--summary path] [--json path]
  *
  * Without --write the script only prints the diff (dry run).
- * --summary writes a Markdown summary (used by the weekly refresh workflow).
+ * --summary writes a Markdown summary and --json the counts (used by the weekly
+ * refresh workflow, which opens an issue from a dry run so new airports can be
+ * reviewed before they are added).
  */
 
 import fs from 'node:fs';
@@ -36,6 +39,7 @@ const SEATSAERO_JSON = path.join(ROOT, 'data_source/seatsaero_new.json');
 
 /** IATA metro assignments that the city-code source is missing (keyed by airport IATA). */
 const CITY_CODE_OVERRIDES: Record<string, string> = {
+    ALY: 'ALY', // Borg El Arab took over ALY in 2025-2026; the source still lists it as HBE
     EWR: 'NYC',
     JPN: 'WAS', // Pentagon; the source lists OCW (Washington, NC)
     LNQ: 'LNQ', // coordinates corrected; the source still has the old position
@@ -115,6 +119,8 @@ function argValue(name: string): string | undefined {
 const WRITE = process.argv.includes('--write');
 const EXTRA_ADDS = new Set((argValue('--add') || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean));
 const SUMMARY_PATH = argValue('--summary');
+const JSON_PATH = argValue('--json');
+const AUTO_ADD = !process.argv.includes('--no-auto-add');
 
 async function loadText(localPath: string | undefined, url: string): Promise<string> {
     if (localPath) return fs.readFileSync(localPath, 'utf8');
@@ -179,6 +185,11 @@ function coordinate(value: string | undefined, min: number, max: number): number
 function httpUrl(value: string | undefined): string {
     const url = (value || '').trim();
     return HTTP_URL_RE.test(url) ? url : '';
+}
+
+/** Municipality without surrounding whitespace or stray trailing commas ("Zephyr," -> "Zephyr"). */
+function cleanCity(value: string | undefined): string {
+    return (value || '').trim().replace(/[\s,]+$/, '');
 }
 
 /** ISO 3166-1 alpha-2, or empty string. */
@@ -283,6 +294,7 @@ async function main(): Promise<void> {
         iataFilled: [] as string[],
         added: [] as string[],
         iataConflicts: [] as string[],
+        candidates: [] as string[],
         continentChanged: [] as string[],
         cityFilled: 0,
         cityCodeFilled: 0,
@@ -300,8 +312,13 @@ async function main(): Promise<void> {
         };
         const oa = near(airport.icao ? oaByCode.get(String(airport.icao)) : undefined) || near(airport.iata ? oaByIata.get(airport.iata) : undefined);
 
-        // Keep the existing city when OurAirports has no replacement.
-        const city = CITY_OVERRIDES[String(airport.icao)] ?? (oa?.municipality?.trim() || airport.city || '');
+        // Keep the existing city when OurAirports has no replacement, or when its value is
+        // the same city with a region appended ("Balivanich" -> "Balivanich, Eilean Siar"),
+        // which would break exact city lookups.
+        const remoteCity = cleanCity(oa?.municipality);
+        const existingCity = airport.city || '';
+        const keepExisting = !remoteCity || (existingCity !== '' && remoteCity.toLowerCase().startsWith(`${existingCity.toLowerCase()},`));
+        const city = CITY_OVERRIDES[String(airport.icao)] ?? (keepExisting ? existingCity : remoteCity);
         if (city !== (airport.city ?? '')) log.cityFilled++;
         airport.city = city;
 
@@ -357,6 +374,10 @@ async function main(): Promise<void> {
 
         const icao = icaoFor(row);
         if (icao && usedIcao.has(icao)) continue; // handled by the IATA fill above
+        if (!explicit && !AUTO_ADD) {
+            log.candidates.push(`${iata} ${icao || '----'} ${cleanName(row.name)} (${row.iso_country}, ${row.type}) — https://ourairports.com/airports/${row.ident}/`);
+            continue;
+        }
         const lat = coordinate(row.latitude_deg, -90, 90);
         const lon = coordinate(row.longitude_deg, -180, 180);
         if (lat === null || lon === null) {
@@ -395,7 +416,7 @@ async function main(): Promise<void> {
             website: httpUrl(row.home_link),
             runway_length: longestRunway.get(row.ident) ?? null,
             ...trackingUrls(iata, icao),
-            city: row.municipality || '',
+            city: cleanCity(row.municipality),
             city_code: seatsaero.length > 0 ? cityCodeFor(iata, lat, lon) : (CITY_CODE_OVERRIDES[iata] ?? ''),
         };
         data.push(record);
@@ -413,13 +434,27 @@ async function main(): Promise<void> {
     lines.push(`## OurAirports refresh`, '');
     lines.push(`- Records: ${data.length}`);
     lines.push(`- city changed: ${log.cityFilled}, city_code changed: ${log.cityCodeFilled}`);
-    lines.push('', `### Added (${log.added.length})`, ...log.added.map(s => `- ${s}`));
+    lines.push('', `### ${WRITE ? 'Added' : 'To add'} (${log.added.length})`, ...log.added.map(s => `- ${s}`));
+    if (!AUTO_ADD) {
+        lines.push('', `### New scheduled-service airports to review (${log.candidates.length})`, ...log.candidates.map(s => `- ${s}`));
+    }
     lines.push('', `### IATA set on existing records (${log.iataFilled.length})`, ...log.iataFilled.map(s => `- ${s}`));
     lines.push('', `### Continent changed (${log.continentChanged.length})`, ...log.continentChanged.map(s => `- ${s}`));
     lines.push('', `### IATA mismatches to review (${log.iataConflicts.length})`, ...log.iataConflicts.map(s => `- ${s}`));
     const report = lines.join('\n');
     console.log(report);
     if (SUMMARY_PATH) fs.writeFileSync(SUMMARY_PATH, report + '\n');
+    if (JSON_PATH) {
+        fs.writeFileSync(JSON_PATH, JSON.stringify({
+            added: log.added.length,
+            candidates: log.candidates.length,
+            iataFilled: log.iataFilled.length,
+            continentChanged: log.continentChanged.length,
+            iataConflicts: log.iataConflicts.length,
+            cityChanged: log.cityFilled,
+            cityCodeChanged: log.cityCodeFilled,
+        }) + '\n');
+    }
 
     if (WRITE) {
         fs.writeFileSync(AIRPORTS_JSON, toAsciiJson(data) + '\n');
