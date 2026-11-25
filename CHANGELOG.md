@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🆕 New Features
 
 - **`executeTool(name, args)`** — runs any `airport-data-js/tools` definition against the library, so an LLM tool call can be dispatched in one line instead of a hand-written switch. Exported from the main and `lite` entry points (not from `tools`, which stays small).
-- **`Airport.faa_code`** — FAA location identifier for US airports whose FAA code is not a 4-character ICAO code (e.g. ATE → `80F`, BFG → `U07`; set on 90 records). These codes were previously stored in `icao`. Also a new `findAirports` filter.
+- **`Airport.faa_code`** — FAA location identifier for US airports whose FAA code is not a 4-character ICAO code (e.g. ATE → `80F`, BFG → `U07`; set on 87 records). These codes were previously stored in `icao`. Also a new `findAirports` filter.
 - **`findNearbyAirports(lat, lon, radiusKm, limit?)`** — results now come back nearest first with a `distance` field (km), and an optional `limit` caps them.
 - **`getAirportsByType(type, limit?)`** — optional `limit`.
 
@@ -33,18 +33,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🐛 Fixes
 
 - **Alexandria, Egypt** — Borg El Arab was renamed Alexandria International Airport and took over the `ALY`/`HEAX` codes; the old El Nouzha record is marked closed. **`HBE` no longer exists**: look it up as `ALY`. Its elevation is corrected from 6,930 ft to 171 ft, and its city code is `ALY`.
-- **Non-ICAO codes removed from `icao`** — 109 records corrected. FAA identifiers moved to `faa_code`, wrong or local codes were replaced with the real ICAO code (e.g. `KI19` → `KGDK`, `EFJI` → `EFIJ`, `LSKV` → `LZKV`, `UHQO` → `UHPS`), and the RadarBox/FlightAware URLs built from the old codes were updated or cleared.
+- **Codes that are not ICAO codes removed from `icao`** — 87 US records stored a 3-character FAA identifier there (e.g. `80F`); it is now in `faa_code` and `icao` is `""`. Their RadarBox/FlightAware URLs, which used that identifier, are cleared. Vejrø (Denmark) had the invalid `EK_4`, now `""`.
+- **Duplicate airports merged** — 13 airports were stored two or three times, usually a stale code next to the current one. Each is now one record with OurAirports' current code and name, keeping the city, Wikipedia link, elevation and runway length from whichever copy had them. **These codes no longer exist**: `MX31` (now `MMGA`, Creel), `1AA0` (`K1A0`, Dallas Bay Sky Park, marked closed), `K8M8` (`88MI`, Eagle II), `1SC6` and `2Q0` (`K2Q0`, Flying W), `SI7F` (`SI4O`), `KI19` (`KGDK`, Greene County/Lewis A. Jackson), `EFJI` (`EFIJ`), `KI43` (`KJRO`, James A Rhodes), `LSKV` (`LZKV`, Kvetoslavov), `KF97` (`TT97`, Seagraves), `UHQO` (`UHPS`, Sobolevo), and FAA identifiers `O48` (`KO48`, Salmon Bar) and `2N4` (`K2N4`, Owasco). Also removed a duplicate Kiskunlacháza (Hungary) record with the invalid ICAO `lhkk` (the `LHKK` record remains).
+- **Separate facilities that shared one position** — moved to their own coordinates, with names and types from OurAirports: Chame (MPCM, MPMC), Dillon Field (CZF2, ~135 km from where it was), Grand River Executive (CPP6), and the airport and seaplane base pairs at Carcross (CFA4, CEB7), Orillia (CNJ4, CNV6) and Carey Lake (CNX3, CNJ5). The seaplane bases were typed `medium_airport`; they are now `seaplane_base`, and the three airports are `small_airport`.
 - **BSZ** (Bosteri) — Flightradar24 link pointed at `FRU`.
-- Names, elevations, runway lengths and cities corrected on about 20 records from the FAA/OurAirports data (e.g. "DALLAS BAY SKY PARK" → "Dallas Bay Sky Park Airport", "Campo Do Meio" → "Campo do Meio").
-- Removed a duplicate Kiskunlacháza (Hungary) record with the invalid ICAO `lhkk`.
+- **Cities** — stray trailing commas removed ("Baker,", "Isla Puná,", "White Springs,"), "Campo Do Meio" → "Campo do Meio", and Zephyr filled in for Dillon Field.
 - **HTTPS links** — 1,111 `website`/`wikipedia` links upgraded from `http://` to `https://` on hosts that serve TLS.
 
 ### 🔧 Tooling
 
-- `refresh:data` keeps the existing city when OurAirports only appends a region ("Balivanich" → "Balivanich, Eilean Siar"), which would break exact city lookups. It also retries downloads with a timeout, refuses a truncated OurAirports export, and skips rows with invalid coordinates, country codes, types or URLs.
+- **Weekly data refresh opens an issue instead of a PR.** It runs as a dry run and lists new scheduled-service airports (with OurAirports links), IATA codes to set, continent and city changes, and IATA mismatches for review. Airports are only added after review: run the workflow with `mode: apply` and the checked codes in `add` to open a PR. New `refresh:data` flags: `--no-auto-add` (list candidates instead of adding them) and `--json` (counts for automation).
+- `refresh:data` keeps the existing city when OurAirports only appends a region ("Balivanich" → "Balivanich, Eilean Siar"), which would break exact city lookups, and strips trailing commas from city names. It also retries downloads with a timeout, refuses a truncated OurAirports export, and skips rows with invalid coordinates, country codes, types or URLs.
 - `npm run upgrade:https` (`scripts/upgrade_https.ts`) probes `http://` links and rewrites those whose hosts support HTTPS (dry run by default; `-- --write` saves).
 - `npm run build:payload` writes the shared dataset modules; `npm run build` now cleans output directories first.
-- `npm run check:duplicates` also validates ICAO format, `faa_code` format and `website`/`wikipedia` URLs.
+- `npm run check:duplicates` also validates ICAO format, `faa_code` format and `website`/`wikipedia` URLs, and fails when two records share exact coordinates.
 - CI runs typecheck, test typecheck (tests are now `strict`), dataset validation, `npm audit --audit-level=high` and a check that generated `types/` are committed. The release workflow audits at `high` instead of `critical` and creates releases with `gh`. All workflows set job timeouts and checkout with `persist-credentials: false`.
 
 ### 📦 Dependencies

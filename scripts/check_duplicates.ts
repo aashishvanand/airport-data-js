@@ -194,6 +194,24 @@ reportIssues('wikipedia URL (must be empty or http(s)://)', badWikipedia);
 reportIssues('ICAO format (must be empty or 4 alphanumeric characters)', badIcaoFormat);
 reportIssues('FAA code format (must be 3 alphanumeric characters)', badFaaCode);
 
+// Two records at exactly the same position are almost always one airport stored twice
+// (a stale code next to the current one). Separate facilities, such as an airport and
+// its seaplane base, should carry their own coordinates.
+const recordsByPosition = new Map<string, string[]>();
+const sharedPosition: FieldIssue[] = [];
+airportsData.forEach(airport => {
+    const key = `${airport.latitude},${airport.longitude}`;
+    const label = airport.iata || airport.icao || airport.faa_code || airport.airport || '(unknown)';
+    const existing = recordsByPosition.get(key);
+    if (existing) {
+        sharedPosition.push({ code: label, reason: `same coordinates (${key}) as ${existing.join(', ')}` });
+        existing.push(label);
+    } else {
+        recordsByPosition.set(key, [label]);
+    }
+});
+reportIssues('unique coordinates (no two records at the same position)', sharedPosition);
+
 // --- Report-only: known, non-blocking data gaps ---
 
 console.log('\n📋 Data completeness (informational, does not fail validation):');
