@@ -7,3 +7,4 @@
  * bundle without the website, Wikipedia, and flight-tracker URL fields.
  */
 export * from './core';
+export { executeTool } from './execute';

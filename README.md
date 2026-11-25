@@ -53,7 +53,8 @@ Each airport object contains the following fields:
 ```javascript
 {
   iata: "SIN",                    // 3-letter IATA code
-  icao: "WSSS",                   // 4-letter ICAO code
+  icao: "WSSS",                   // 4-letter ICAO code ("" when unknown)
+  faa_code: "80F",                // Optional: FAA/local identifier for airports without a 4-character ICAO code
   time: "Asia/Singapore",         // IANA timezone identifier
   utc: 8,                         // Deprecated: July snapshot of the UTC offset; use getUtcOffset(code, date) instead
   country_code: "SG",             // 2-letter country code
@@ -104,6 +105,8 @@ console.log(nearby); // Airports near Singapore Changi
 
 ## API Reference
 
+Code arguments (IATA, ICAO, country, continent, city, and mixed code lookups) are trimmed and accepted in any case, so `'lhr'`, `' LHR '` and `'LHR'` are equivalent.
+
 ### Core Search Functions
 
 #### `getAirportByIata(iataCode)`
@@ -149,6 +152,8 @@ console.log(best.iata, best.matchType); // "LHR" "name"
 ```
 
 Options: `limit` (1-100, default 10), `scheduledOnly`, `types` (e.g. `['large_airport']`), `country_code`, `fuzzy` (default `true`).
+
+Queries are matched against Latin-script, ASCII-folded names, so accented and non-decomposing letters work (`Zürich`, `Tromsø`). Non-Latin queries (e.g. `東京`) are not transliterated and return no results.
 
 #### `getAirportsByCity(city)`
 Airports whose city matches (case- and accent-insensitive), major airports first. Qualified municipalities match their base name ("Paris (Orly, Val-de-Marne)" matches "Paris").
@@ -203,12 +208,16 @@ await formatAirportTime('CDG', { locale: 'fr-FR', timeStyle: 'short' });        
 
 ### Geographic Functions
 
-#### `findNearbyAirports(lat, lon, radiusKm)`
-Finds airports within a specified radius of given coordinates.
+#### `findNearbyAirports(lat, lon, radiusKm, limit?)`
+Finds airports within a specified radius of given coordinates, nearest first. Each result has a `distance` field in kilometers.
 
 ```javascript
 const nearby = await findNearbyAirports(51.5074, -0.1278, 100);
-// Returns airports within 100km of London coordinates
+// Returns airports within 100km of London coordinates, sorted by distance
+console.log(nearby[0].iata, nearby[0].distance);
+
+// Optional limit
+const closest = await findNearbyAirports(51.5074, -0.1278, 100, 5);
 ```
 
 #### `calculateDistance(code1, code2)`
@@ -238,12 +247,15 @@ const asianAirports = await getAirportByContinent('AS');
 // Continent codes: AS, EU, NA, SA, AF, OC, AN
 ```
 
-#### `getAirportsByType(type)`
+#### `getAirportsByType(type, limit?)`
 Finds airports by their type.
 
 ```javascript
 const largeAirports = await getAirportsByType('large_airport');
 // Available types: large_airport, medium_airport, small_airport, heliport, seaplane_base
+
+// Optional limit
+const firstTen = await getAirportsByType('large_airport', 10);
 
 // Convenience search for all airports
 const allAirports = await getAirportsByType('airport');
@@ -276,6 +288,8 @@ const longRunwayAirports = await findAirports({
   min_runway_ft: 10000
 });
 ```
+
+Filter values are type-checked: numbers must be finite (`NaN`/`Infinity` throw), `country_code`/`continent`/`iata`/`icao`/`city_code` accept any case, `type` is case-insensitive, and `scheduled_service` accepts a boolean or `"TRUE"`/`"FALSE"`. `undefined` values are ignored; an unknown key or a non-object argument throws.
 
 #### `getAutocompleteSuggestions(query)`
 Provides autocomplete suggestions for search interfaces (returns max 10 results). Uses the same ranking as `search` (without typo tolerance) and returns plain airport objects.
@@ -596,6 +610,8 @@ airport-data-js/
 │   ├── csv_to_json.ts            # Converts airports.csv to airports.json
 │   ├── compress_json.ts          # Gzips airports.json into the full and lite payloads
 │   ├── refresh_ourairports.ts    # Syncs with OurAirports: new airports, IATA codes, cities
+│   ├── upgrade_https.ts          # Upgrades http:// links to https:// where the host supports TLS
+│   ├── build_payload.ts          # Writes the shared lib/payload.*.js dataset modules
 │   ├── build_esm_types.ts        # Creates .d.mts declarations for the ESM exports
 │   ├── check_duplicates.ts       # Validates no duplicate IATA/ICAO codes
 │   ├── extract_latest_changelog.ts # Extracts changelog for GitHub releases
@@ -620,7 +636,9 @@ Scripts are plain TypeScript run directly via [`tsx`](https://github.com/private
 | `npm run build:lib` | Build only the Node.js bundle |
 | `npm run build:dist` | Build only the browser bundles |
 | `npm run build:esm` | Build only the ESM bundles (`lib/*.mjs`) |
+| `npm run build:payload` | Write the shared dataset modules (`lib/payload.full.js`, `lib/payload.lite.js`) |
 | `npm run refresh:data` | Diff against the latest OurAirports export (dry run; add `-- --write` to save, `-- --add FSH,BZJ` to force-add codes) |
+| `npm run upgrade:https` | Probe `http://` links and upgrade hosts that support HTTPS (dry run; add `-- --write` to save) |
 | `npm run check:duplicates` | Validate the dataset: duplicate IATA/ICAO codes, coordinate ranges, continent/type enums, country code format, `scheduled_service`/`utc` types, plus a data-completeness report |
 | `npm run generate:json` | Regenerate `data/airports.json` from `data/airports.csv` |
 | `npm run generate:compressed` | Regenerate `src/airports.data.json` and `src/airports.lite.data.json` from `data/airports.json` |
@@ -642,10 +660,11 @@ A [weekly workflow](.github/workflows/data-refresh.yml) runs `refresh:data` agai
 To add or update airport entries by hand:
 
 1. Edit `data/airports.json` directly (or run `npm run refresh:data -- --write`)
-2. Run `npm run generate:compressed` to regenerate `src/airports.data.json`
-3. Run `npm run check:duplicates` to validate the dataset (it reads the compressed file)
-4. Run `npm test` to verify the changes
-5. Submit a pull request with both the JSON and generated data changes
+2. Optionally run `npm run upgrade:https -- --write` to upgrade links on hosts that serve HTTPS
+3. Run `npm run generate:compressed` to regenerate `src/airports.data.json`
+4. Run `npm run check:duplicates` to validate the dataset (it reads the compressed file)
+5. Run `npm test` to verify the changes
+6. Submit a pull request with both the JSON and generated data changes
 
 ## Publishing a New Version
 

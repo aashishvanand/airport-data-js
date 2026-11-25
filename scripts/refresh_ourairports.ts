@@ -53,8 +53,8 @@ const CITY_OVERRIDES: Record<string, string> = {
  * They are left out of the "to review" list.
  */
 const ACKNOWLEDGED_IATA_MISMATCHES: Record<string, string> = {
-    // OurAirports' HEBA row (Borg El Arab, IATA HBE) lists ICAO HEAX, which is El Nouzha (ALY).
-    // The dataset keeps both airports as separate records.
+    // Borg El Arab was renamed Alexandria International Airport; its codes moved to ALY/HEAX
+    // (effective 2025-2026). OurAirports may still list the old HBE IATA code.
     HEAX: 'ALY',
 };
 
@@ -65,6 +65,13 @@ const MAX_MATCH_DISTANCE_KM = 50;
 const UTC_SNAPSHOT_DATE = new Date(Date.UTC(2024, 6, 15, 12));
 
 const TYPES_ALLOWED_FOR_AUTO_ADD = new Set(['large_airport', 'medium_airport', 'small_airport']);
+const VALID_TYPES = new Set([...TYPES_ALLOWED_FOR_AUTO_ADD, 'heliport', 'seaplane_base', 'closed']);
+const HTTP_URL_RE = /^https?:\/\/\S+$/i;
+
+/** Sanity floor for the OurAirports export; refuses a truncated or error-page download. */
+const MIN_OURAIRPORTS_ROWS = 60_000;
+const FETCH_TIMEOUT_MS = 30_000;
+const FETCH_ATTEMPTS = 3;
 
 function isAutoAddEligible(row: OARow): boolean {
     return row.scheduled_service === 'yes' && TYPES_ALLOWED_FOR_AUTO_ADD.has(row.type);
@@ -111,9 +118,21 @@ const SUMMARY_PATH = argValue('--summary');
 
 async function loadText(localPath: string | undefined, url: string): Promise<string> {
     if (localPath) return fs.readFileSync(localPath, 'utf8');
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`);
-    return res.text();
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt++) {
+        try {
+            const res = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+            if (!res.ok) throw new Error(`Failed to download ${url}: ${res.status}`);
+            return await res.text();
+        } catch (err) {
+            lastError = err;
+            if (attempt < FETCH_ATTEMPTS) {
+                console.warn(`⚠️  Download failed (attempt ${attempt}/${FETCH_ATTEMPTS}): ${err instanceof Error ? err.message : String(err)}`);
+                await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+            }
+        }
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +166,24 @@ function num(value: string): number | null {
     if (value === '' || value === undefined) return null;
     const n = Number(value);
     return Number.isFinite(n) ? n : null;
+}
+
+/** Numeric coordinate inside its valid range; blank or out-of-range cells return null. */
+function coordinate(value: string | undefined, min: number, max: number): number | null {
+    if (value === undefined || value.trim() === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) && n >= min && n <= max ? n : null;
+}
+
+/** Empty string unless the remote value is a usable http(s) URL. */
+function httpUrl(value: string | undefined): string {
+    const url = (value || '').trim();
+    return HTTP_URL_RE.test(url) ? url : '';
+}
+
+/** ISO 3166-1 alpha-2, or empty string. */
+function countryCode(value: string | undefined): string {
+    return /^[A-Z]{2}$/.test(value ?? '') ? value! : '';
 }
 
 function icaoFor(row: OARow): string {
@@ -197,6 +234,9 @@ function toAsciiJson(value: unknown): string {
 async function main(): Promise<void> {
     const oaRows = parse(await loadText(argValue('--csv'), OURAIRPORTS_URL), { columns: true, skip_empty_lines: true }) as OARow[];
     const runwayRows = parse(await loadText(argValue('--runways'), RUNWAYS_URL), { columns: true, skip_empty_lines: true }) as RunwayRow[];
+    if (oaRows.length < MIN_OURAIRPORTS_ROWS) {
+        throw new Error(`Refusing to continue: OurAirports returned ${oaRows.length} rows (expected at least ${MIN_OURAIRPORTS_ROWS}); the export is probably truncated`);
+    }
     const data = JSON.parse(fs.readFileSync(AIRPORTS_JSON, 'utf8')) as AirportRecord[];
 
     const seatsaero = fs.existsSync(SEATSAERO_JSON)
@@ -250,10 +290,14 @@ async function main(): Promise<void> {
 
     // 1 + 2: enrich existing records
     for (const airport of data) {
-        const near = (row: OARow | undefined) =>
-            row && haversine(airport.latitude, airport.longitude, Number(row.latitude_deg), Number(row.longitude_deg)) <= MAX_MATCH_DISTANCE_KM
+        const near = (row: OARow | undefined) => {
+            if (!row) return undefined;
+            const lat = coordinate(row.latitude_deg, -90, 90);
+            const lon = coordinate(row.longitude_deg, -180, 180);
+            return lat !== null && lon !== null && haversine(airport.latitude, airport.longitude, lat, lon) <= MAX_MATCH_DISTANCE_KM
                 ? row
                 : undefined;
+        };
         const oa = near(airport.icao ? oaByCode.get(String(airport.icao)) : undefined) || near(airport.iata ? oaByIata.get(airport.iata) : undefined);
 
         // Keep the existing city when OurAirports has no replacement.
@@ -272,8 +316,8 @@ async function main(): Promise<void> {
             usedIata.add(oaIata);
             Object.assign(airport, trackingUrls(oaIata, String(airport.icao)));
             if (airport.elevation_ft === null) airport.elevation_ft = num(oa.elevation_ft);
-            if (!airport.wikipedia) airport.wikipedia = oa.wikipedia_link || '';
-            if (!airport.website) airport.website = oa.home_link || '';
+            if (!airport.wikipedia) airport.wikipedia = httpUrl(oa.wikipedia_link);
+            if (!airport.website) airport.website = httpUrl(oa.home_link);
             log.iataFilled.push(`${oaIata} → ${airport.icao} (${airport.airport})`);
         } else if (airport.iata && oaIata && airport.iata !== oaIata && airport.icao && icaoFor(oa) === airport.icao
             && ACKNOWLEDGED_IATA_MISMATCHES[String(airport.icao)] !== airport.iata) {
@@ -313,9 +357,22 @@ async function main(): Promise<void> {
 
         const icao = icaoFor(row);
         if (icao && usedIcao.has(icao)) continue; // handled by the IATA fill above
-        const lat = Number(row.latitude_deg);
-        const lon = Number(row.longitude_deg);
-        const time = guessTimeZone(data, row.iso_country, lat, lon);
+        const lat = coordinate(row.latitude_deg, -90, 90);
+        const lon = coordinate(row.longitude_deg, -180, 180);
+        if (lat === null || lon === null) {
+            console.warn(`⚠️  Skipping ${iata}: invalid coordinates (${row.latitude_deg}, ${row.longitude_deg})`);
+            continue;
+        }
+        const country = countryCode(row.iso_country);
+        if (!country) {
+            console.warn(`⚠️  Skipping ${iata}: invalid country code "${row.iso_country}"`);
+            continue;
+        }
+        if (!VALID_TYPES.has(row.type)) {
+            console.warn(`⚠️  Skipping ${iata}: invalid airport type "${row.type}"`);
+            continue;
+        }
+        const time = guessTimeZone(data, country, lat, lon);
         if (!time) {
             console.warn(`⚠️  Skipping ${iata}: no timezone could be inferred`);
             continue;
@@ -326,16 +383,16 @@ async function main(): Promise<void> {
             icao,
             time,
             utc: utcOffsetHours(time, UTC_SNAPSHOT_DATE),
-            country_code: row.iso_country,
-            continent: continentFor(row.iso_country, lat, lon, dominant) ?? row.continent,
+            country_code: country,
+            continent: continentFor(country, lat, lon, dominant) ?? row.continent,
             airport: cleanName(row.name),
             latitude: lat,
             longitude: lon,
             elevation_ft: num(row.elevation_ft),
             type: row.type,
             scheduled_service: row.scheduled_service === 'yes' ? 'TRUE' : 'FALSE',
-            wikipedia: row.wikipedia_link || '',
-            website: row.home_link || '',
+            wikipedia: httpUrl(row.wikipedia_link),
+            website: httpUrl(row.home_link),
             runway_length: longestRunway.get(row.ident) ?? null,
             ...trackingUrls(iata, icao),
             city: row.municipality || '',

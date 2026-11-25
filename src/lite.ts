@@ -11,3 +11,4 @@ import { setPayload } from './state';
 setPayload(airportsPayload);
 
 export * from './core';
+export { executeTool } from './execute';

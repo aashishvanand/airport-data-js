@@ -11,3 +11,8 @@ export interface CompressedPayload {
 export declare function setPayload(p: CompressedPayload): void;
 /** @internal */
 export declare function getPayload(): CompressedPayload;
+/**
+ * Releases the compressed payload once the rows have been built.
+ * @internal
+ */
+export declare function clearPayload(): void;

@@ -25,6 +25,7 @@ const airportsData: Airport[] = Array.isArray(parsed)
 const VALID_CONTINENTS = new Set(['AF', 'AN', 'AS', 'EU', 'NA', 'OC', 'SA']);
 const VALID_TYPES = new Set(['large_airport', 'medium_airport', 'small_airport', 'heliport', 'seaplane_base', 'closed']);
 const COUNTRY_CODE_RE = /^[A-Z]{2}$/;
+const HTTP_URL_RE = /^https?:\/\/\S+$/i;
 
 let hasErrors = false;
 const errors: string[] = [];
@@ -89,6 +90,10 @@ const badUtc: FieldIssue[] = [];
 const badTimezone: FieldIssue[] = [];
 const badCity: FieldIssue[] = [];
 const badCodeType: FieldIssue[] = [];
+const badWebsite: FieldIssue[] = [];
+const badWikipedia: FieldIssue[] = [];
+const badIcaoFormat: FieldIssue[] = [];
+const badFaaCode: FieldIssue[] = [];
 
 const validTimezoneCache = new Map<string, boolean>();
 function isValidTimeZone(tz: unknown): boolean {
@@ -144,6 +149,18 @@ airportsData.forEach(airport => {
     if (typeof airport.icao !== 'string' || typeof airport.iata !== 'string') {
         badCodeType.push({ code: label, reason: `iata=${JSON.stringify(airport.iata)} icao=${JSON.stringify(airport.icao)}` });
     }
+    if (typeof airport.icao === 'string' && airport.icao !== '' && !/^[A-Z0-9]{4}$/.test(airport.icao)) {
+        badIcaoFormat.push({ code: label, reason: `icao=${JSON.stringify(airport.icao)}` });
+    }
+    if (airport.faa_code !== undefined && airport.faa_code !== null && (typeof airport.faa_code !== 'string' || !/^[A-Z0-9]{3}$/.test(airport.faa_code))) {
+        badFaaCode.push({ code: label, reason: `faa_code=${JSON.stringify(airport.faa_code)}` });
+    }
+    for (const [field, issues] of [['website', badWebsite], ['wikipedia', badWikipedia]] as const) {
+        const value = (airport as unknown as Record<string, unknown>)[field];
+        if (value !== undefined && (typeof value !== 'string' || (value !== '' && !HTTP_URL_RE.test(value)))) {
+            issues.push({ code: label, reason: `${field}=${JSON.stringify(value)}` });
+        }
+    }
 
     if (airport.runway_length === null || airport.runway_length === undefined) missingRunwayLength++;
     if (airport.elevation_ft === null || airport.elevation_ft === undefined) missingElevationFt++;
@@ -172,6 +189,10 @@ reportIssues('utc field (must be numeric)', badUtc);
 reportIssues('IANA timezone (time field)', badTimezone);
 reportIssues('city / city_code fields', badCity);
 reportIssues('iata/icao field type (must be strings)', badCodeType);
+reportIssues('website URL (must be empty or http(s)://)', badWebsite);
+reportIssues('wikipedia URL (must be empty or http(s)://)', badWikipedia);
+reportIssues('ICAO format (must be empty or 4 alphanumeric characters)', badIcaoFormat);
+reportIssues('FAA code format (must be 3 alphanumeric characters)', badFaaCode);
 
 // --- Report-only: known, non-blocking data gaps ---
 

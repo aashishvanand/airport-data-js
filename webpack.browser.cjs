@@ -23,17 +23,13 @@ module.exports = {
                 use: {
                     loader: 'babel-loader',
                     options: {
-                        presets: ['@babel/preset-env']
+                        presets: [['@babel/preset-env', { targets: 'defaults' }]]
                     }
                 }
             }
         ]
     },
     resolve: {
-        fallback: {
-            "fs": false,
-            "path": require.resolve("path-browserify")
-        },
         extensions: ['.js', '.json']
     }
 };
