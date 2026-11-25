@@ -7,3 +7,4 @@
  * bundle without the website, Wikipedia, and flight-tracker URL fields.
  */
 export * from './core.mjs';
+export { executeTool } from './execute.mjs';

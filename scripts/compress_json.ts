@@ -11,7 +11,7 @@
  */
 
 import { gzipSync } from 'node:zlib';
-import fs from 'fs-extra';
+import fs from 'node:fs';
 import path from 'node:path';
 
 /** Fields dropped from the lite dataset. All are optional on the Airport type. */
@@ -25,17 +25,17 @@ function toColumns(records: Array<Record<string, unknown>>): Record<string, unkn
     return Object.fromEntries(fields.map(field => [field, records.map(r => (field in r ? r[field] : null))]));
 }
 
-async function writePayload(records: Array<Record<string, unknown>>, outputPath: string): Promise<void> {
+function writePayload(records: Array<Record<string, unknown>>, outputPath: string): void {
     const gzipped = gzipSync(Buffer.from(JSON.stringify(toColumns(records))), { level: 9 });
-    await fs.writeJson(outputPath, { gzip: gzipped.toString('base64') });
+    fs.writeFileSync(outputPath, JSON.stringify({ gzip: gzipped.toString('base64') }));
     console.log(`Wrote ${path.relative(process.cwd(), outputPath)} (${(gzipped.length * 4 / 3 / 1024).toFixed(0)} KB base64)`);
 }
 
-async function compressJSON(): Promise<void> {
+function compressJSON(): void {
     const inputPath = path.join(__dirname, '../data/airports.json');
-    const records = (await fs.readJson(inputPath)) as Array<Record<string, unknown>>;
+    const records = JSON.parse(fs.readFileSync(inputPath, 'utf8')) as Array<Record<string, unknown>>;
 
-    await writePayload(records, path.join(__dirname, '../src/airports.data.json'));
+    writePayload(records, path.join(__dirname, '../src/airports.data.json'));
 
     const round4 = (v: unknown) => (typeof v === 'number' ? Math.round(v * 1e4) / 1e4 : v);
     const lite = records
@@ -45,12 +45,14 @@ async function compressJSON(): Promise<void> {
             for (const field of LITE_OMITTED_FIELDS) delete copy[field];
             return copy;
         });
-    await writePayload(lite, path.join(__dirname, '../src/airports.lite.data.json'));
+    writePayload(lite, path.join(__dirname, '../src/airports.lite.data.json'));
 
     console.log('Compression complete.');
 }
 
-compressJSON().catch(err => {
+try {
+    compressJSON();
+} catch (err) {
     console.error('Error during compression:', err);
     process.exit(1);
-});
+}

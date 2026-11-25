@@ -23,3 +23,11 @@ export function getPayload(): CompressedPayload {
     }
     return payload;
 }
+
+/**
+ * Releases the compressed payload once the rows have been built.
+ * @internal
+ */
+export function clearPayload(): void {
+    payload = null;
+}

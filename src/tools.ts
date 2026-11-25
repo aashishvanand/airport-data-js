@@ -11,14 +11,14 @@
  *
  * // OpenAI function calling
  * const response = await openai.chat.completions.create({
- *     model: 'gpt-4',
+ *     model: 'gpt-5',
  *     messages: [...],
  *     tools: airportTools.map(t => ({ type: 'function', function: t })),
  * });
  *
  * // Anthropic tool use
  * const response = await anthropic.messages.create({
- *     model: 'claude-sonnet-4-20250514',
+ *     model: 'claude-sonnet-4-5',
  *     messages: [...],
  *     tools: airportTools.map(t => ({
  *         name: t.name,
@@ -38,16 +38,20 @@ export interface ToolDefinition {
             type: string;
             description: string;
             enum?: string[];
-            items?: { type: string };
+            items?: { type: string; pattern?: string };
             default?: unknown;
             minimum?: number;
             maximum?: number;
+            pattern?: string;
+            minItems?: number;
+            maxItems?: number;
         }>;
         required: string[];
+        additionalProperties?: false;
     };
 }
 
-export const airportTools: ToolDefinition[] = [
+const toolDefinitions: ToolDefinition[] = [
     {
         name: 'getAirportByIata',
         description: 'Look up an airport by its 3-letter IATA code (e.g., "LHR" for London Heathrow, "JFK" for New York JFK, "SIN" for Singapore Changi). Returns full airport details including location, timezone, and links.',
@@ -56,7 +60,8 @@ export const airportTools: ToolDefinition[] = [
             properties: {
                 iataCode: {
                     type: 'string',
-                    description: '3-letter uppercase IATA airport code (e.g., "LHR", "JFK", "SIN")'
+                    description: '3-letter uppercase IATA airport code (e.g., "LHR", "JFK", "SIN")',
+                    pattern: '^[A-Za-z]{3}$'
                 }
             },
             required: ['iataCode']
@@ -70,7 +75,8 @@ export const airportTools: ToolDefinition[] = [
             properties: {
                 icaoCode: {
                     type: 'string',
-                    description: '4-character uppercase ICAO airport code (e.g., "EGLL", "KJFK", "WSSS")'
+                    description: '4-character uppercase ICAO airport code (e.g., "EGLL", "KJFK", "WSSS")',
+                    pattern: '^[A-Za-z0-9]{4}$'
                 }
             },
             required: ['icaoCode']
@@ -139,8 +145,15 @@ export const airportTools: ToolDefinition[] = [
                 },
                 radiusKm: {
                     type: 'number',
-                    description: 'Search radius in kilometers',
+                    description: 'Search radius in kilometers (minimum 1)',
+                    minimum: 1,
                     default: 100
+                },
+                limit: {
+                    type: 'integer',
+                    description: 'Optional maximum number of results, nearest first (default: all matching airports)',
+                    minimum: 1,
+                    maximum: 10000
                 }
             },
             required: ['lat', 'lon']
@@ -156,6 +169,12 @@ export const airportTools: ToolDefinition[] = [
                     type: 'string',
                     description: 'Airport type classification',
                     enum: ['large_airport', 'medium_airport', 'small_airport', 'heliport', 'seaplane_base', 'closed', 'airport']
+                },
+                limit: {
+                    type: 'integer',
+                    description: 'Optional maximum number of results (default: all matching airports)',
+                    minimum: 1,
+                    maximum: 100000
                 }
             },
             required: ['type']
@@ -298,8 +317,10 @@ export const airportTools: ToolDefinition[] = [
                     enum: ['AF', 'AN', 'AS', 'EU', 'NA', 'OC', 'SA']
                 },
                 limit: {
-                    type: 'number',
+                    type: 'integer',
                     description: 'Number of results to return (1-1000)',
+                    minimum: 1,
+                    maximum: 1000,
                     default: 10
                 },
                 sortBy: {
@@ -319,8 +340,10 @@ export const airportTools: ToolDefinition[] = [
             properties: {
                 codes: {
                     type: 'array',
-                    description: 'Array of IATA or ICAO codes',
-                    items: { type: 'string' }
+                    description: 'Array of 2-500 IATA or ICAO codes',
+                    items: { type: 'string', pattern: '^[A-Za-z0-9]{3,4}$' },
+                    minItems: 1,
+                    maxItems: 500
                 }
             },
             required: ['codes']
@@ -335,7 +358,9 @@ export const airportTools: ToolDefinition[] = [
                 codes: {
                     type: 'array',
                     description: 'Array of 2-100 IATA or ICAO codes',
-                    items: { type: 'string' }
+                    items: { type: 'string', pattern: '^[A-Za-z0-9]{3,4}$' },
+                    minItems: 2,
+                    maxItems: 100
                 }
             },
             required: ['codes']
@@ -380,7 +405,8 @@ export const airportTools: ToolDefinition[] = [
             properties: {
                 code: {
                     type: 'string',
-                    description: '3-letter IATA code to validate'
+                    description: '3-letter IATA code to validate',
+                    pattern: '^[A-Za-z]{3}$'
                 }
             },
             required: ['code']
@@ -394,7 +420,8 @@ export const airportTools: ToolDefinition[] = [
             properties: {
                 code: {
                     type: 'string',
-                    description: '4-character ICAO code to validate'
+                    description: '4-character ICAO code to validate',
+                    pattern: '^[A-Za-z0-9]{4}$'
                 }
             },
             required: ['code']
@@ -408,7 +435,8 @@ export const airportTools: ToolDefinition[] = [
             properties: {
                 country_code: {
                     type: 'string',
-                    description: 'Optional country code filter'
+                    description: 'Optional country code filter',
+                    pattern: '^[A-Za-z]{2}$'
                 },
                 type: {
                     type: 'string',
@@ -458,7 +486,8 @@ export const airportTools: ToolDefinition[] = [
                 },
                 country_code: {
                     type: 'string',
-                    description: 'Optional 2-letter ISO country code filter (e.g., "US")'
+                    description: 'Optional 2-letter ISO country code filter (e.g., "US")',
+                    pattern: '^[A-Za-z]{2}$'
                 }
             },
             required: ['query']
@@ -561,3 +590,12 @@ export const airportTools: ToolDefinition[] = [
         }
     }
 ];
+
+/**
+ * Tool definitions with `additionalProperties: false`, so frameworks can reject
+ * arguments that are not part of the schema.
+ */
+export const airportTools: ToolDefinition[] = toolDefinitions.map(tool => ({
+    ...tool,
+    parameters: { ...tool.parameters, additionalProperties: false },
+}));

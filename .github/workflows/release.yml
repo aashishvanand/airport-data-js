@@ -10,12 +10,15 @@ permissions: read-all
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       matrix:
         node-version: [22.x, 24.x]
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -27,13 +30,10 @@ jobs:
         run: npm ci
       
       - name: Security Audit
-        run: npm audit --audit-level=critical
+        run: npm audit --audit-level=high
       
       - name: Check for duplicate airport codes
         run: npm run check:duplicates
-      
-      - name: Build package
-        run: npm run build
       
       - name: Run tests
         run: npm test
@@ -41,13 +41,16 @@ jobs:
   publish:
     needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.ref == 'refs/heads/release'
     permissions:
       contents: write
       id-token: write # For provenance
     steps:
       - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       
       - name: Setup Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -61,9 +64,6 @@ jobs:
       
       - name: Check for duplicate airport codes
         run: npm run check:duplicates
-      
-      - name: Build package
-        run: npm run build
       
       - name: Run tests
         run: npm test
@@ -87,24 +87,17 @@ jobs:
       
       - name: Extract latest changelog
         if: steps.check-version.outputs.should-publish == 'true'
-        id: changelog
-        run: |
-          CHANGELOG_CONTENT=$(npm run --silent changelog:extract)
-          echo "content<<EOF" >> $GITHUB_OUTPUT
-          echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+        run: npm run --silent changelog:extract > "$RUNNER_TEMP/release-notes.md"
       
       - name: Create GitHub Release
         if: steps.check-version.outputs.should-publish == 'true'
-        uses: actions/create-release@0cb9c9b65d5d1901c1f53e5e66eaf4afd303e70e # v1 (latest)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.check-version.outputs.package-version }}
-          release_name: Release v${{ steps.check-version.outputs.package-version }}
-          body: ${{ steps.changelog.outputs.content }}
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGE_VERSION: ${{ steps.check-version.outputs.package-version }}
+        run: |
+          gh release create "v$PACKAGE_VERSION" \
+            --title "Release v$PACKAGE_VERSION" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
       
       - name: Skip publish (version unchanged)
         if: steps.check-version.outputs.should-publish == 'false'

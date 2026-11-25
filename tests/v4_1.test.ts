@@ -151,7 +151,8 @@ describe('City fields and lookups', () => {
         expect(nyc.map(a => a.iata)).toEqual(expect.arrayContaining(['JFK', 'LGA', 'EWR']));
         const lon: Airport[] = await lib.getAirportsByCityCode('LON');
         expect(lon[0].iata).toBe('LHR');
-        await expect(lib.getAirportsByCityCode('nyc')).rejects.toThrow();
+        expect((await lib.getAirportsByCityCode('nyc')).length).toBeGreaterThan(1);
+        await expect(lib.getAirportsByCityCode('ny1')).rejects.toThrow(/city code/);
     });
 
     test('findAirports accepts city filters', async () => {
@@ -317,8 +318,12 @@ describe('lite entry point', () => {
 
 describe('ESM entry points', () => {
     test('index.mjs, lite.mjs and tools.mjs import and match the CJS API', async () => {
+        // The .mjs bundles have no declaration files of their own.
+        // @ts-expect-error - untyped built ESM bundle
         const esm = await import('../lib/index.mjs');
+        // @ts-expect-error - untyped built ESM bundle
         const esmLite = await import('../lib/lite.mjs');
+        // @ts-expect-error - untyped built ESM bundle
         const esmTools = await import('../lib/tools.mjs');
         expect(Object.keys(esm).filter(k => k !== 'default').sort()).toEqual(Object.keys(lib).sort());
         expect((await esm.getAirportByIata('LHR'))[0].city).toBe('London');
@@ -359,5 +364,260 @@ describe('Review fixes', () => {
     test('ANM (Antsirabato) serves Antalaha', async () => {
         const [anm]: Airport[] = await lib.getAirportByIata('ANM');
         expect(anm.city).toBe('Antalaha');
+    });
+});
+
+describe('Dataset URL fields', () => {
+    test('every website and wikipedia value is empty or an http(s) URL', async () => {
+        const all: Airport[] = await lib.findAirports({});
+        const bad = all
+            .flatMap(a => [['website', a.website], ['wikipedia', a.wikipedia]] as const)
+            .filter(([, url]) => url && !/^https?:\/\/\S+$/i.test(url));
+        expect(bad).toEqual([]);
+    });
+});
+
+describe('Input validation and edge cases', () => {
+    test('findAirports rejects non-finite numbers', async () => {
+        await expect(lib.findAirports({ min_runway_ft: NaN })).rejects.toThrow(/finite number/);
+        await expect(lib.findAirports({ latitude: Infinity })).rejects.toThrow(/finite number/);
+        await expect(lib.findAirports({ elevation_ft: '100' })).rejects.toThrow(/finite number or null/);
+    });
+
+    test('findAirports accepts lowercase codes and boolean scheduled_service', async () => {
+        const lower: Airport[] = await lib.findAirports({ country_code: 'us' });
+        const upper: Airport[] = await lib.findAirports({ country_code: 'US' });
+        expect(lower.length).toBe(upper.length);
+        expect(lower.length).toBeGreaterThan(0);
+
+        const viaBoolean: Airport[] = await lib.findAirports({ scheduled_service: true });
+        const viaHas: Airport[] = await lib.findAirports({ has_scheduled_service: true });
+        expect(viaBoolean.length).toBe(viaHas.length);
+        expect(viaBoolean.length).toBeGreaterThan(0);
+    });
+
+    test('findAirports skips undefined values and rejects null', async () => {
+        const all: Airport[] = await lib.findAirports({});
+        expect((await lib.findAirports({ country_code: undefined })).length).toBe(all.length);
+        await expect(lib.findAirports(null)).rejects.toThrow(/Invalid filters/);
+    });
+
+    test('search validates its options', async () => {
+        await expect(lib.search('london', { types: 'large_airport' })).rejects.toThrow(/types/);
+        await expect(lib.search('london', null)).rejects.toThrow(/Invalid options/);
+        const lower: AirportSearchResult[] = await lib.search('paris', { country_code: 'fr' });
+        expect(lower.length).toBeGreaterThan(0);
+        expect(lower.every(a => a.country_code === 'FR')).toBe(true);
+    });
+
+    test('queries are validated after normalization', async () => {
+        await expect(lib.search('a!')).rejects.toThrow(/at least 2/);
+        await expect(lib.searchByName('a!')).rejects.toThrow(/at least 2/);
+    });
+
+    test('time helpers handle ancient and unsupported years', async () => {
+        await expect(lib.getLocalTime('JFK', null)).rejects.toThrow(/null is not a date/);
+        // Years 1-99 used to be mapped to 1900-1999 by Date.UTC; they now use the real year.
+        const ancient: number = await lib.getUtcOffset('JFK', '0050-01-01T00:00:00Z');
+        expect(Number.isFinite(ancient)).toBe(true);
+        expect(Math.abs(ancient)).toBeLessThanOrEqual(14);
+        await expect(lib.getUtcOffset('JFK', '0000-01-01T00:00:00Z')).rejects.toThrow(/before year 1/);
+    });
+
+    test('formatAirportTime wraps invalid Intl options', async () => {
+        await expect(lib.formatAirportTime('JFK', { locale: 'en_US' })).rejects.toThrow(/Invalid date\/time format options/);
+        await expect(lib.formatAirportTime('JFK', { dateStyle: 'short', year: 'numeric' })).rejects.toThrow(/Invalid date\/time format options/);
+    });
+
+    test('getLargestAirportsByContinent requires an integer limit', async () => {
+        await expect(lib.getLargestAirportsByContinent('EU', 2.5)).rejects.toThrow(/integer/);
+    });
+
+    test('normalizes letters NFD does not decompose', async () => {
+        const byName: Airport[] = await lib.searchByName('Tromsø');
+        expect(byName.some(a => a.iata === 'TOS')).toBe(true);
+        expect((await lib.search('Tromsø'))[0].iata).toBe('TOS');
+    });
+
+    test('Morocco is marked as DST during the Ramadan shift', async () => {
+        const ramadan: AirportLocalTime = await lib.getLocalTime('CMN', '2026-03-05T12:00:00Z');
+        expect(ramadan.utcOffset).toBe(0);
+        expect(ramadan.isDst).toBe(true);
+        const winter: AirportLocalTime = await lib.getLocalTime('CMN', '2026-01-15T12:00:00Z');
+        expect(winter.isDst).toBe(false);
+    });
+
+    test('code lookups accept lowercase and padded input', async () => {
+        expect((await lib.getAirportByIata('lhr'))[0].icao).toBe('EGLL');
+        expect((await lib.getAirportByIata(' LHR '))[0].iata).toBe('LHR');
+        expect((await lib.getAirportByIcao(' egll '))[0].iata).toBe('LHR');
+        expect((await lib.getAirportByCountryCode('gb')).length).toBeGreaterThan(100);
+        expect((await lib.getAirportByContinent('eu')).length).toBeGreaterThan(100);
+        expect((await lib.getAirportsByCityCode('lon')).length).toBeGreaterThan(1);
+        expect(await lib.validateIataCode('lhr')).toBe(true);
+        expect(await lib.validateIcaoCode('egll')).toBe(true);
+        expect((await lib.getAirportStatsByCountry('gb')).total).toBeGreaterThan(100);
+        expect((await lib.getAirportStatsByContinent('eu')).total).toBeGreaterThan(100);
+        expect((await lib.getLargestAirportsByContinent('eu', 1))[0].continent).toBe('EU');
+        expect(await lib.calculateDistance('lhr', 'jfk')).toBeCloseTo(5541, -2);
+        expect((await lib.getMultipleAirports(['lhr', 'EGLL']))[0]!.iata).toBe('LHR');
+        expect((await lib.getAirportLinks('lhr'))!.website).toContain('heathrow');
+        expect(await lib.getUtcOffset('jfk', '2026-01-15T12:00:00Z')).toBe(-5);
+        expect((await lib.findNearestAirport(51.5074, -0.1278, { iata: 'lhr' }))!.iata).toBe('LHR');
+    });
+
+    test('code filters accept padded input', async () => {
+        expect((await lib.findAirports({ iata: ' LHR ' }))[0].icao).toBe('EGLL');
+        expect((await lib.findAirports({ icao: ' egll ' }))[0].iata).toBe('LHR');
+        expect((await lib.findAirports({ country_code: ' gb ', type: ' Large_Airport ' })).length).toBeGreaterThan(5);
+        expect((await lib.findAirports({ city_code: 'lon ' })).length).toBeGreaterThan(1);
+        expect(await lib.getAirportCount({ continent: ' eu ' })).toBeGreaterThan(100);
+        expect((await lib.search('london', { country_code: ' gb ' }))[0].country_code).toBe('GB');
+    });
+
+    test('FAA identifiers are stored separately from ICAO', async () => {
+        const [ate]: Airport[] = await lib.getAirportByIata('ATE');
+        expect(ate.icao).toBe('');
+        expect(ate.faa_code).toBe('80F');
+        expect(ate.radarbox_url).toBe('');
+        const found: Airport[] = await lib.findAirports({ faa_code: '80F' });
+        expect(found).toHaveLength(1);
+    });
+});
+
+describe('Tool dispatcher', () => {
+    test('executeTool maps schema arguments to library calls', async () => {
+        const [lhr]: Airport[] = await lib.executeTool('getAirportByIata', { iataCode: 'LHR' }) as Airport[];
+        expect(lhr.city).toBe('London');
+
+        const results: AirportSearchResult[] = await lib.executeTool('search', { query: 'New York', limit: 3 }) as AirportSearchResult[];
+        expect(results).toHaveLength(3);
+        expect(results[0].iata).toBe('JFK');
+
+        const nearby: Array<Airport & { distance: number }> = await lib.executeTool('findNearbyAirports', {
+            lat: 51.5074, lon: -0.1278, radiusKm: 40,
+        }) as Array<Airport & { distance: number }>;
+        expect(nearby.some(a => a.iata === 'LHR')).toBe(true);
+
+        const count: number = await lib.executeTool('getAirportCount', { country_code: 'GB' }) as number;
+        expect(count).toBeGreaterThan(100);
+    });
+
+    test('executeTool rejects unknown tools', async () => {
+        await expect(lib.executeTool('notATool', {})).rejects.toThrow(/Unknown tool: notATool/);
+    });
+
+    test('the dispatcher knows every tool in the schema', async () => {
+        const { airportTools } = require('../lib/tools.js');
+        const error: Error = await lib.executeTool('notATool', {}).catch((err: Error) => err);
+        expect(error.message).toContain('Unknown tool: notATool');
+        for (const tool of airportTools) {
+            expect(error.message).toContain(tool.name);
+        }
+    });
+});
+
+describe('Browser bundle', () => {
+    test('UMD bundle exposes the same API as the Node build', async () => {
+        const umd = require('../dist/airport-data.min.js');
+        expect(typeof umd.getAirportByIata).toBe('function');
+        expect(typeof umd.executeTool).toBe('function');
+        const [lhr]: Airport[] = await umd.getAirportByIata('LHR');
+        expect(lhr.city).toBe('London');
+        const [sin]: Airport[] = await umd.getAirportByIata('SIN');
+        expect(sin.country_code).toBe('SG');
+    });
+
+    test('lite UMD bundle omits link fields', async () => {
+        const umdLite = require('../dist/airport-data.lite.min.js');
+        const [lhr]: Airport[] = await umdLite.getAirportByIata('LHR');
+        expect(lhr.website).toBeUndefined();
+        expect(lhr.wikipedia).toBeUndefined();
+        const links = await umdLite.getAirportLinks('LHR');
+        expect(links.website).toBeUndefined();
+    });
+});
+
+describe('Nearby airports', () => {
+    test('results are sorted by distance and carry a distance in km', async () => {
+        const nearby: Array<Airport & { distance: number }> = await lib.findNearbyAirports(51.5074, -0.1278, 60);
+        expect(nearby.length).toBeGreaterThan(3);
+        for (const airport of nearby) {
+            expect(typeof airport.distance).toBe('number');
+            expect(Number.isFinite(airport.distance)).toBe(true);
+        }
+        const distances = nearby.map(a => a.distance);
+        expect(distances).toEqual([...distances].sort((a, b) => a - b));
+        const lhr = nearby.find(a => a.iata === 'LHR')!;
+        expect(lhr.distance).toBeGreaterThan(20);
+        expect(lhr.distance).toBeLessThan(30);
+    });
+
+    test('the returned airport objects are copies', async () => {
+        const first: Array<Airport & { distance: number }> = await lib.findNearbyAirports(51.5074, -0.1278, 30);
+        const lhr = first.find(a => a.iata === 'LHR')!;
+        lhr.city = 'Mutated';
+        const second: Array<Airport> = await lib.findNearbyAirports(51.5074, -0.1278, 30);
+        expect(second.find(a => a.iata === 'LHR')!.city).toBe('London');
+    });
+
+    test('an optional limit caps the results', async () => {
+        const capped: Array<Airport & { distance: number }> = await lib.findNearbyAirports(51.5074, -0.1278, 60, 2);
+        expect(capped).toHaveLength(2);
+        expect(capped[0].distance).toBeLessThanOrEqual(capped[1].distance);
+        await expect(lib.findNearbyAirports(51.5074, -0.1278, 60, 1.5)).rejects.toThrow(/limit/i);
+        await expect(lib.findNearbyAirports(51.5074, -0.1278, 60, 0)).rejects.toThrow(/limit/i);
+    });
+});
+
+describe('Airports by type', () => {
+    test('an optional limit caps the results', async () => {
+        const all: Airport[] = await lib.getAirportsByType('large_airport');
+        expect(all.length).toBeGreaterThan(3);
+        expect(await lib.getAirportsByType('large_airport', 3)).toHaveLength(3);
+        expect((await lib.getAirportsByType('airport', 5)).length).toBeLessThanOrEqual(5);
+        await expect(lib.getAirportsByType('large_airport', 2.5)).rejects.toThrow(/limit/i);
+    });
+});
+
+describe('Reassigned airport codes', () => {
+    test('Alexandria International uses ALY/HEAX and El Nouzha is closed', async () => {
+        const [aly]: Airport[] = await lib.getAirportByIata('ALY');
+        expect(aly.airport).toBe('Alexandria International Airport');
+        expect(aly.icao).toBe('HEAX');
+        expect(aly.flightradar24_url).toContain('/ALY');
+        await expect(lib.getAirportByIata('HBE')).rejects.toThrow(/No data found/);
+        await expect(lib.getAirportByIcao('HEBA')).rejects.toThrow(/No data found/);
+
+        const [nouzha]: Airport[] = await lib.findAirports({ airport: 'El Nouzha Airport' });
+        expect(nouzha.type).toBe('closed');
+        expect(nouzha.iata).toBe('');
+        expect(nouzha.icao).toBe('');
+        expect(nouzha.scheduled_service).toBe('FALSE');
+        expect(nouzha.flightradar24_url).toBe('');
+    });
+
+    test('Manas keeps its new BSZ/FRU-context codes', async () => {
+        const [bsz]: Airport[] = await lib.getAirportByIata('BSZ');
+        expect(bsz.icao).toBe('UCFM');
+        expect(bsz.airport).toBe('Manas International Airport');
+        expect(bsz.flightradar24_url).toContain('/BSZ');
+        await expect(lib.getAirportByIata('FRU')).rejects.toThrow(/No data found/);
+    });
+});
+
+describe('Package layout', () => {
+    test('the dataset is stored once and shared by the CJS and ESM entries', () => {
+        const fs = require('node:fs');
+        expect(fs.statSync('lib/payload.full.js').size).toBeGreaterThan(1_000_000);
+        expect(fs.statSync('lib/payload.lite.js').size).toBeGreaterThan(400_000);
+        expect(fs.statSync('lib/index.js').size).toBeLessThan(200_000);
+        expect(fs.statSync('lib/index.mjs').size).toBeLessThan(200_000);
+        expect(fs.statSync('lib/lite.js').size).toBeLessThan(200_000);
+        expect(fs.statSync('lib/lite.mjs').size).toBeLessThan(200_000);
+        expect(fs.readFileSync('lib/index.js', 'utf8')).toContain('payload.full.js');
+        expect(fs.readFileSync('lib/index.mjs', 'utf8')).toContain('payload.full.js');
+        expect(fs.readFileSync('lib/lite.js', 'utf8')).toContain('payload.lite.js');
+        expect(fs.readFileSync('lib/lite.mjs', 'utf8')).toContain('payload.lite.js');
     });
 });
